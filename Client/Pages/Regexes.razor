@@ -1,0 +1,49 @@
+﻿@page "/regexes"
+@using System.Text.RegularExpressions
+
+<h1>Regexes</h1>
+
+<p>
+    <label>Regex:</label>
+    <input class="form-control" @bind="RegexText" />
+</p>
+<p>
+    <label>Tests:</label>
+    <textarea class="form-control" @bind="Tests" rows="10"></textarea>
+</p>
+<p>
+    <label>Matches:</label>
+    <ul class="list-group">
+        @foreach (var m in Matches)
+        {
+            <li class="list-group-item">@m</li>
+        }
+    </ul>
+</p>
+<p>
+    <button  class="btn btn-primary" @onclick="Test_Click">Test</button>
+</p>
+
+@code {
+    protected string Tests { get; set; }
+    protected string RegexText { get; set; }
+    protected List<string> Matches { get; set; } = new List<string>();
+
+    protected void Test_Click(object e)
+    {
+        Regex testRegex = new Regex(RegexText);
+        var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+        var results = new List<string>();
+
+        foreach (var item in tests)
+        {
+            if (testRegex.IsMatch(item))
+            {
+                results.Add(item);
+            }
+        }
+
+        Matches = results;
+    }
+}
