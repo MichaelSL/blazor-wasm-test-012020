@@ -1,11 +1,11 @@
-﻿using BlazorWasmTest.Shared.Interfaces;
+﻿using BlazorWasmRegexTest.Shared.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace BlazorWasmTest.Shared.Services
+namespace BlazorWasmRegexTest.Shared.Services
 {
     public class RegexService : IRegexService
     {

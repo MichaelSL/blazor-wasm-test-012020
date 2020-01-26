@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
 
-namespace BlazorWasmTest.Server
+namespace BlazorWasmRegexTest.Server
 {
     public class Startup
     {

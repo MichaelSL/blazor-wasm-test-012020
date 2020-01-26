@@ -2,11 +2,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.0.0
 MinimumVisualStudioVersion = 16.0.0.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWasmTest.Server", "Server\BlazorWasmTest.Server.csproj", "{1EB9C311-D952-48AD-9FCE-CF4EB629442F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWasmRegexTest.Server", "Server\BlazorWasmRegexTest.Server.csproj", "{1EB9C311-D952-48AD-9FCE-CF4EB629442F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWasmTest.Client", "Client\BlazorWasmTest.Client.csproj", "{8069220A-8082-4B42-B9C8-B34E9068CD76}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWasmRegexTest.Client", "Client\BlazorWasmRegexTest.Client.csproj", "{8069220A-8082-4B42-B9C8-B34E9068CD76}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWasmTest.Shared", "Shared\BlazorWasmTest.Shared.csproj", "{C51F5EDB-D037-43F5-AE4F-E5D4CA32445F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWasmRegexTest.Shared", "Shared\BlazorWasmRegexTest.Shared.csproj", "{C51F5EDB-D037-43F5-AE4F-E5D4CA32445F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

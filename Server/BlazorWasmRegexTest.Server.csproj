@@ -10,8 +10,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Client\BlazorWasmTest.Client.csproj" />
-    <ProjectReference Include="..\Shared\BlazorWasmTest.Shared.csproj" />
+    <ProjectReference Include="..\Client\BlazorWasmRegexTest.Client.csproj" />
+    <ProjectReference Include="..\Shared\BlazorWasmRegexTest.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>

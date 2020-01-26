@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Blazor.Hosting;
 
-namespace BlazorWasmTest.Client
+namespace BlazorWasmRegexTest.Client
 {
     public class Program
     {

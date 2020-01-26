@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 
-namespace BlazorWasmTest.Server
+namespace BlazorWasmRegexTest.Server
 {
     public class Program
     {

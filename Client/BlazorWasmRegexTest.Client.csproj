@@ -12,8 +12,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Blazor.HttpClient" Version="3.1.0-preview4.19579.2" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.DevServer" Version="3.1.0-preview4.19579.2" PrivateAssets="all" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Shared\BlazorWasmTest.Shared.csproj" />
+    <ProjectReference Include="..\Shared\BlazorWasmRegexTest.Shared.csproj" />
   </ItemGroup>
 
 </Project>

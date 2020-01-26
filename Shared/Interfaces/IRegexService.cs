@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace BlazorWasmTest.Shared.Interfaces
+namespace BlazorWasmRegexTest.Shared.Interfaces
 {
     public interface IRegexService
     {

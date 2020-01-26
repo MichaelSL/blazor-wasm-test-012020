@@ -15,7 +15,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "BlazorWasmTest.Client": {
+    "BlazorWasmRegexTest.Client": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

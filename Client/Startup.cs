@@ -1,10 +1,10 @@
 using BlazorStrap;
-using BlazorWasmTest.Shared.Interfaces;
-using BlazorWasmTest.Shared.Services;
+using BlazorWasmRegexTest.Shared.Interfaces;
+using BlazorWasmRegexTest.Shared.Services;
 using Microsoft.AspNetCore.Components.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BlazorWasmTest.Client
+namespace BlazorWasmRegexTest.Client
 {
     public class Startup
     {
