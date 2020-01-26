@@ -1,8 +1,7 @@
-﻿@page "/regexes"
-@using System.Text.RegularExpressions
+﻿@using System.Text.RegularExpressions
 @inject BlazorWasmTest.Shared.Interfaces.IRegexService regexService
 
-<h1>Regexes</h1>
+<h2>Regex Tester</h2>
 
 <p>
     <label>Regex:</label>
@@ -13,7 +12,8 @@
     <textarea class="form-control" @bind="Tests" rows="10"></textarea>
 </p>
 <p>
-    <button class="btn btn-primary" @onclick="Test_Click">Test</button>
+    <BSButton Color="Color.Primary" OnClick="Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
+    @*<button class="btn btn-primary" @onclick="Test_Click">Test</button>*@
 </p>
 <p>
     <BSTabGroup>
@@ -72,3 +72,4 @@
         SplitList = regexService.GetSplitList(tests, testRegex);
     }
 }
+
