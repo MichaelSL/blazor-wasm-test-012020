@@ -1,5 +1,6 @@
 ﻿@page "/regexes"
 @using System.Text.RegularExpressions
+@inject BlazorWasmTest.Shared.Interfaces.IRegexService regexService
 
 <h1>Regexes</h1>
 
@@ -51,8 +52,8 @@
 @code {
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
-    protected List<string> Matches { get; set; } = new List<string>();
-    protected List<string[]> SplitList { get; set; } = new List<string[]>();
+    protected IEnumerable<string> Matches { get; set; } = new List<string>();
+    protected IEnumerable<string[]> SplitList { get; set; } = new List<string[]>();
 
     private Regex testRegex;
     private string prevRegexText;
@@ -67,35 +68,7 @@
         }
         var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
-        Matches = GetMatches(tests);
-        SplitList = GetSplitList(tests);
-    }
-
-    private List<string> GetMatches(string[] tests)
-    {
-        var results = new List<string>();
-
-        foreach (var item in tests)
-        {
-            if (testRegex.IsMatch(item))
-            {
-                results.Add(item);
-            }
-        }
-        return results;
-    }
-
-    private List<string[]> GetSplitList(string[] tests)
-    {
-        var results = new List<string[]>();
-
-        foreach (var item in tests)
-        {
-            var splitResult = testRegex.Split(item);
-            if (splitResult.Any(i => !String.IsNullOrEmpty(i)))
-                results.Add(splitResult);
-        }
-
-        return results;
+        Matches = regexService.GetMatches(tests, testRegex);
+        SplitList = regexService.GetSplitList(tests, testRegex);
     }
 }
