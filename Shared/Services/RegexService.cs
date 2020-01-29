@@ -9,7 +9,12 @@ namespace BlazorWasmRegexTest.Shared.Services
 {
     public class RegexService : IRegexService
     {
-        public IEnumerable<string> GetMatches(IEnumerable<string> tests, Regex testRegex)
+        public IEnumerable<MatchCollection> GetMatches(IEnumerable<string> tests, Regex testRegex)
+        {
+            return tests.Select(input => testRegex.Matches(input));
+        }
+
+        public IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex)
         {
             return tests.Where(item => testRegex.IsMatch(item));
         }
@@ -18,7 +23,7 @@ namespace BlazorWasmRegexTest.Shared.Services
         {
             return tests
                 .Select(item => testRegex.Split(item))
-                .Where(splitGroup => splitGroup.Any(i => !String.IsNullOrEmpty(i)));
+                .Where(splitGroup => splitGroup.Any(i => !string.IsNullOrEmpty(i)));
         }
     }
 }

@@ -22,7 +22,7 @@
                 <BSTabLabel>Matches</BSTabLabel>
                 <BSTabContent>
                     <ul class="list-group">
-                        @foreach (var m in Matches)
+                        @foreach (var m in MatchedStrings)
                         {
                             <li class="list-group-item">@m</li>
                         }
@@ -33,9 +33,9 @@
                 <BSTabLabel>Split list</BSTabLabel>
                 <BSTabContent>
                     <ul class="list-group">
-                        @foreach (var m in SplitList)
+                        @foreach (var m in GetSplitList())
                         {
-                            <li class="list-group-item">@String.Join(" | ", m)</li>
+                            <li class="list-group-item">@m</li>
                         }
                     </ul>
                 </BSTabContent>
@@ -52,7 +52,7 @@
 @code {
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
-    protected IEnumerable<string> Matches { get; set; } = new List<string>();
+    protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string[]> SplitList { get; set; } = new List<string[]>();
 
     private Regex testRegex;
@@ -68,8 +68,13 @@
         }
         var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
-        Matches = regexService.GetMatches(tests, testRegex);
+        MatchedStrings = regexService.GetMatchedStrings(tests, testRegex);
         SplitList = regexService.GetSplitList(tests, testRegex);
+    }
+
+    protected IEnumerable<string> GetSplitList()
+    {
+        return SplitList.Select((m, i) => $"{i + 1}.\t{String.Join(" | ", m)}");
     }
 }
 

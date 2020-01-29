@@ -7,7 +7,8 @@ namespace BlazorWasmRegexTest.Shared.Interfaces
 {
     public interface IRegexService
     {
-        IEnumerable<string> GetMatches(IEnumerable<string> tests, Regex testRegex);
+        IEnumerable<MatchCollection> GetMatches(IEnumerable<string> tests, Regex testRegex);
+        IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex);
         IEnumerable<string[]> GetSplitList(IEnumerable<string> tests, Regex testRegex);
     }
 }
