@@ -14,9 +14,18 @@ namespace BlazorWasmRegexTest.Shared.Services
             return tests.ToDictionary(input => input, input => testRegex.Matches(input));
         }
 
-        public IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex)
+        public IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex, Func<Match, string> highlighter = null)
         {
-            return tests.Where(item => testRegex.IsMatch(item));
+            var res = tests.Where(item => testRegex.IsMatch(item));
+            if (highlighter != null)
+            {
+                return res
+                    .Select(item => testRegex.Replace(item, new MatchEvaluator(highlighter)));
+            }
+            else
+            {
+                return res;
+            }
         }
 
         public IEnumerable<string[]> GetSplitList(IEnumerable<string> tests, Regex testRegex)

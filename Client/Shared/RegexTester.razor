@@ -34,9 +34,9 @@
                 <BSTabLabel>Split list</BSTabLabel>
                 <BSTabContent>
                     <ul class="list-group">
-                        @foreach (var m in GetSplitList())
+                        @foreach (var m in SplitList)
                         {
-                            <li class="list-group-item">@m</li>
+                            <li class="list-group-item">@((MarkupString)m)</li>
                         }
                     </ul>
                 </BSTabContent>
@@ -54,7 +54,7 @@
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
-    protected IEnumerable<string[]> SplitList { get; set; } = new List<string[]>();
+    protected IEnumerable<string> SplitList { get; set; } = new List<string>();
 
     private Regex testRegex;
     private string prevRegexText;
@@ -71,22 +71,11 @@
 
         var matches = regexService.GetMatches(tests, testRegex);
 
-        var matchedStringsHtml = new List<string>();
-        foreach (var matchCollection in matches)
-        {
-            if (matchCollection.Value.Any())
-            {
-                matchedStringsHtml.Add(htmlHelperService.GetMarkedSpans(matchCollection.Key, matchCollection.Value, "mark-yellow"));
-            }
-        }
+        MatchedStrings = matches
+            .Where(mc => mc.Value.Any())
+            .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
-        MatchedStrings = matchedStringsHtml;
-        SplitList = regexService.GetSplitList(tests, testRegex);
-    }
-
-    protected IEnumerable<string> GetSplitList()
-    {
-        return SplitList.Select((m, i) => $"{i + 1}.\t{String.Join(" | ", m)}");
+        SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
     }
 }
 
