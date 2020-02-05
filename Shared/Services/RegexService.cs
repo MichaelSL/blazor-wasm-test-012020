@@ -9,9 +9,9 @@ namespace BlazorWasmRegexTest.Shared.Services
 {
     public class RegexService : IRegexService
     {
-        public IEnumerable<MatchCollection> GetMatches(IEnumerable<string> tests, Regex testRegex)
+        public IDictionary<string, MatchCollection> GetMatches(IEnumerable<string> tests, Regex testRegex)
         {
-            return tests.Select(input => testRegex.Matches(input));
+            return tests.ToDictionary(input => input, input => testRegex.Matches(input));
         }
 
         public IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex)

@@ -13,6 +13,7 @@ namespace BlazorWasmRegexTest.Client
             services.AddBootstrapCSS();
 
             services.AddTransient<IRegexService, RegexService>();
+            services.AddTransient<IHtmlHelperService, HtmlHelperService>();
         }
 
         public void Configure(IComponentsApplicationBuilder app)

@@ -1,5 +1,6 @@
 ﻿@using System.Text.RegularExpressions
 @inject BlazorWasmRegexTest.Shared.Interfaces.IRegexService regexService
+@inject BlazorWasmRegexTest.Shared.Interfaces.IHtmlHelperService htmlHelperService
 
 <h2>Regex Tester</h2>
 
@@ -24,7 +25,7 @@
                     <ul class="list-group">
                         @foreach (var m in MatchedStrings)
                         {
-                            <li class="list-group-item">@m</li>
+                            <li class="list-group-item">@((MarkupString)m)</li>
                         }
                     </ul>
                 </BSTabContent>
@@ -68,7 +69,18 @@
         }
         var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
-        MatchedStrings = regexService.GetMatchedStrings(tests, testRegex);
+        var matches = regexService.GetMatches(tests, testRegex);
+
+        var matchedStringsHtml = new List<string>();
+        foreach (var matchCollection in matches)
+        {
+            if (matchCollection.Value.Any())
+            {
+                matchedStringsHtml.Add(htmlHelperService.GetMarkedSpans(matchCollection.Key, matchCollection.Value, "mark-yellow"));
+            }
+        }
+
+        MatchedStrings = matchedStringsHtml;
         SplitList = regexService.GetSplitList(tests, testRegex);
     }
 
