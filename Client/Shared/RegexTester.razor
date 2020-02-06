@@ -22,7 +22,7 @@
         <div class="space-out">
             <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@((MarkupString)Message)
         </div>
-    </div>    
+    </div>
 </p>
 <p>
     <BSTabGroup>
@@ -70,6 +70,7 @@
 
     private Regex testRegex;
     private string prevRegexText;
+    private System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,20 +100,37 @@
                 return;
             }
         }
-        var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
-        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-        sw.Start();
-        var matches = regexService.GetMatches(tests, testRegex);
 
-        MatchedStrings = matches
-            .Where(mc => mc.Value.Any())
-            .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
+        try
+        {
+            var tests = Tests?
+                .Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
+                .Distinct();
 
-        SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
-        sw.Stop();
-        Message = $"{matches.Count} matches in {sw.ElapsedMilliseconds} ms";
-        SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
+            sw.Reset();
+            sw.Start();
+            var matches = regexService.GetMatches(tests, testRegex);
+            var notEmptyMatches = matches
+                .Where(mc => mc.Value.Any());
+
+            MatchedStrings = notEmptyMatches
+                .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
+
+            SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
+            sw.Stop();
+            Message = $"{notEmptyMatches.Count()} matches in {sw.ElapsedMilliseconds} ms";
+            SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Something went wrong... {ex.Message}");
+            Message = "Error evaluating expression ☠";
+        }
+        finally
+        {
+            sw.Stop();
+        }
     }
 }
 
