@@ -15,8 +15,14 @@
     <textarea class="form-control" @bind="Tests" rows="10"></textarea>
 </p>
 <p>
-    <BSButton Color="Color.Primary" OnClick="Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
-    @*<button class="btn btn-primary" @onclick="Test_Click">Test</button>*@
+    <div class="hr-flex-container">
+        <div>
+            <BSButton Color="Color.Primary" OnClick="Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
+        </div>
+        <div class="space-out">
+            <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@((MarkupString)Message)
+        </div>
+    </div>    
 </p>
 <p>
     <BSTabGroup>
@@ -60,6 +66,7 @@
     protected string RegexText { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
+    protected string Message { get; set; }
 
     private Regex testRegex;
     private string prevRegexText;
@@ -88,11 +95,14 @@
             catch (ArgumentException ex)
             {
                 Console.WriteLine($"Failed to parse a RegEx: {ex.Message}; {ex.GetType().Name}");
+                Message = "Failed to parse an expression 😒";
                 return;
             }
         }
         var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
+        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        sw.Start();
         var matches = regexService.GetMatches(tests, testRegex);
 
         MatchedStrings = matches
@@ -100,7 +110,8 @@
             .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
         SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
-
+        sw.Stop();
+        Message = $"{matches.Count} matches in {sw.ElapsedMilliseconds} ms";
         SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
     }
 }

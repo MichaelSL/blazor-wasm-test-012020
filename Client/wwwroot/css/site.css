@@ -141,6 +141,16 @@ span.mark-yellow {
     font-weight: bold;
 }
 
+.hr-flex-container {
+    display: flex;
+    align-items: center;
+}
+
+div.space-out {
+    margin-left: 15px;
+    margin-right: 15px;
+}
+
 @media (max-width: 767.98px) {
     .main .top-row:not(.auth) {
         display: none;
