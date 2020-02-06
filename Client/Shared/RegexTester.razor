@@ -1,6 +1,8 @@
 ﻿@using System.Text.RegularExpressions
+@using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
 @inject BlazorWasmRegexTest.Shared.Interfaces.IRegexService regexService
 @inject BlazorWasmRegexTest.Shared.Interfaces.IHtmlHelperService htmlHelperService
+@inject SessionStorage SessionStorage
 
 <h2>Regex Tester</h2>
 
@@ -51,6 +53,9 @@
 </p>
 
 @code {
+    const string REGEX_SESSION_STORAGE_KEY = nameof(REGEX_SESSION_STORAGE_KEY);
+    const string TESTS_SESSION_STORAGE_KEY = nameof(TESTS_SESSION_STORAGE_KEY);
+
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
@@ -59,13 +64,32 @@
     private Regex testRegex;
     private string prevRegexText;
 
+    protected override async Task OnInitializedAsync()
+    {
+        RegexText = await SessionStorage.GetItemAsync(REGEX_SESSION_STORAGE_KEY);
+        Tests = await SessionStorage.GetItemAsync(TESTS_SESSION_STORAGE_KEY);
+    }
+
     protected void Test_Click(object e)
     {
+        if (string.IsNullOrEmpty(RegexText))
+            return;
+
         if (prevRegexText != RegexText)
         {
-            Console.WriteLine("Changing RegEx");
-            testRegex = new Regex(RegexText, RegexOptions.Compiled);
-            prevRegexText = RegexText;
+            try
+            {
+                Console.WriteLine("Changing RegEx");
+                testRegex = new Regex(RegexText, RegexOptions.Compiled);
+                prevRegexText = RegexText;
+
+                SessionStorage.SetItem(REGEX_SESSION_STORAGE_KEY, RegexText);
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"Failed to parse a RegEx: {ex.Message}; {ex.GetType().Name}");
+                return;
+            }
         }
         var tests = Tests?.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -76,6 +100,8 @@
             .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
         SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
+
+        SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
     }
 }
 

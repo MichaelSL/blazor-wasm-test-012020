@@ -1,6 +1,7 @@
 using BlazorStrap;
 using BlazorWasmRegexTest.Shared.Interfaces;
 using BlazorWasmRegexTest.Shared.Services;
+using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
 using Microsoft.AspNetCore.Components.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,6 +12,7 @@ namespace BlazorWasmRegexTest.Client
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddBootstrapCSS();
+            services.AddStorage();
 
             services.AddTransient<IRegexService, RegexService>();
             services.AddTransient<IHtmlHelperService, HtmlHelperService>();
