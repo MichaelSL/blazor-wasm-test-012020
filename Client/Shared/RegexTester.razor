@@ -51,7 +51,32 @@
             </BSTab>
             <BSTab>
                 <BSTabLabel>Table</BSTabLabel>
-                <BSTabContent>Coming soon</BSTabContent>
+                <BSTabContent>
+                    <ul class="list-group">
+                        @foreach (var m in NotEmptyMatches)
+                        {
+                            <li class="list-group-item">
+                                <strong>@m.Key</strong>
+                            </li>
+                            @foreach (Match match in m.Value)
+                            {
+                                <li class="list-group-item">
+                                    <div class="hr-flex-container">
+                                        <span class="space-out">
+                                            Index: @match.Index
+                                        </span>
+                                        <span class="space-out">
+                                            Length: @match.Length
+                                        </span>
+                                        <span class="space-out">
+                                            Value: @match.Value
+                                        </span>
+                                    </div>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </BSTabContent>
             </BSTab>
         </BSTabList>
         <BSTabSelectedContent />
@@ -66,6 +91,7 @@
     protected string RegexText { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
+    protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; }
     protected string Message { get; set; }
 
     private Regex testRegex;
@@ -114,7 +140,9 @@
             var notEmptyMatches = matches
                 .Where(mc => mc.Value.Any());
 
-            MatchedStrings = notEmptyMatches
+            NotEmptyMatches = matches;
+
+            MatchedStrings = matches
                 .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
             SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
