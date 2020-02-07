@@ -20,9 +20,10 @@ namespace BlazorWasmRegexTest.Shared.Services
             for (int i = 0; i < matches.Count; i++)
             {
                 var m = matches[i];
-                var indexAdjustment = ($"<span class='{className}'>".Length + "</span>".Length) * i;
                 if (m.Success)
                 {
+                    var indexAdjustment = ($"<span class='{className}'>".Length + "</span>".Length) * i;
+                
                     input = 
                         (i == 0 ? WebUtility.HtmlEncode(input.Substring(0, m.Index + indexAdjustment)) : input.Substring(0, m.Index + indexAdjustment)) 
                         + $"<span class='{className}'>" 
