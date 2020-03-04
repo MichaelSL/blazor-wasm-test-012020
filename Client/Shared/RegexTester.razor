@@ -91,7 +91,7 @@
     protected string RegexText { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
-    protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; }
+    protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
     protected string Message { get; set; }
 
     private Regex testRegex;
