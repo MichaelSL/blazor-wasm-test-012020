@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Nuke.Common;
 using Nuke.Common.Execution;
 using Nuke.Common.Git;
@@ -28,6 +29,13 @@ class Build : NukeBuild
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
+
+    [Parameter("Private docker registry URL (with protocol)")]
+    readonly string DockerPrivateRegistry;
+    [Parameter("Private Docker registry login")]
+    readonly string DockerLogin;
+    [Parameter("Private Docker registry password")]
+    readonly string DockerPassword;
 
     [Solution] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
@@ -60,25 +68,48 @@ class Build : NukeBuild
                 .EnableNoRestore());
         });
 
-    const string ArmImageNameAndTag = "cloud.canister.io:5000/mcanister/regex-tester:arm";
+    const string ArmTag = "arm";
+    const string ImageName = "regex-tester";
+    string ArmFullImageName
+    {
+        get
+        {
+            var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:{ArmTag}";
+            Console.WriteLine($"{nameof(ArmFullImageName)} = {name}");
+            return name;
+        }
+    }
 
     Target BuildArmDockerContainer => _ => _
+        .NotNull(DockerPrivateRegistry)
         .DependsOn(Compile)
         .Executes(() =>
         {
-            var path = Solution.GetProject("BlazorWasmRegexTest.Server").Path;
-            Logger.Info("Building Docker image in {path}", path);
+            var path = Solution.GetProject("BlazorWasmRegexTest.Server").Directory;
+            Console.WriteLine($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
-                .SetPath(path)
+                .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
-                .SetTag(ArmImageNameAndTag));
+                .SetTag(ArmFullImageName));
+        });
+
+    Target LoginToDockerRegistry => _ => _
+        .NotNull(DockerPrivateRegistry)
+        .NotNull(DockerPassword)
+        .NotNull(DockerLogin)
+        .Executes(() =>
+        {
+            DockerTasks.DockerLogin(c => c
+                .SetServer(DockerPrivateRegistry)
+                .SetUsername(DockerLogin)
+                .SetPassword(DockerPassword));
         });
 
     Target PushArmDockerContainer => _ => _
-        .DependsOn(BuildArmDockerContainer)
+        .DependsOn(BuildArmDockerContainer, LoginToDockerRegistry)
         .Executes(() =>
         {
             DockerTasks.DockerPush(c => c
-                .SetName(ArmImageNameAndTag));
+                .SetName(ArmFullImageName));
         });
 }
