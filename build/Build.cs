@@ -68,6 +68,15 @@ class Build : NukeBuild
                 .EnableNoRestore());
         });
 
+    Target Publish => _ => _
+        .DependsOn(Compile)
+        .Executes(() =>
+        {
+            DotNetPublish(_ => _
+                .SetProject(Solution.GetProject("BlazorWasmRegexTest.Server"))
+                .SetOutput(ArtifactsDirectory / "publish"));
+        });
+
     const string ArmTag = "arm";
     const string ImageName = "regex-tester";
     string ArmFullImageName
