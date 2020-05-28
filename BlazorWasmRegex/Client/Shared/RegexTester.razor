@@ -1,0 +1,164 @@
+﻿@using System.Text.RegularExpressions
+@using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
+@inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
+@inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
+@inject SessionStorage SessionStorage
+
+<h2>Regex Tester</h2>
+
+<p>
+    <label>Regex:</label>
+    <input class="form-control" @bind="RegexText" />
+</p>
+<p>
+    <label>Tests:</label>
+    <textarea class="form-control" @bind="Tests" rows="10"></textarea>
+</p>
+<p>
+    <div class="hr-flex-container">
+        <div>
+            <BSButton Color="Color.Primary" OnClick="Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
+        </div>
+        <div class="space-out">
+            <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@((MarkupString)Message)
+        </div>
+    </div>
+</p>
+<p>
+    <BSTabGroup>
+        <BSTabList>
+            <BSTab>
+                <BSTabLabel>Matches</BSTabLabel>
+                <BSTabContent>
+                    <ul class="list-group">
+                        @foreach (var m in MatchedStrings)
+                        {
+                            <li class="list-group-item">@((MarkupString)m)</li>
+                        }
+                    </ul>
+                </BSTabContent>
+            </BSTab>
+            <BSTab>
+                <BSTabLabel>Split list</BSTabLabel>
+                <BSTabContent>
+                    <ul class="list-group">
+                        @foreach (var m in SplitList)
+                        {
+                            <li class="list-group-item">@((MarkupString)m)</li>
+                        }
+                    </ul>
+                </BSTabContent>
+            </BSTab>
+            <BSTab>
+                <BSTabLabel>Table</BSTabLabel>
+                <BSTabContent>
+                    <ul class="list-group">
+                        @foreach (var m in NotEmptyMatches)
+                        {
+                            <li class="list-group-item">
+                                <strong>@m.Key</strong>
+                            </li>
+                            @foreach (Match match in m.Value)
+                            {
+                                <li class="list-group-item">
+                                    <div class="hr-flex-container">
+                                        <span class="space-out">
+                                            Index: @match.Index
+                                        </span>
+                                        <span class="space-out">
+                                            Length: @match.Length
+                                        </span>
+                                        <span class="space-out">
+                                            Value: @match.Value
+                                        </span>
+                                    </div>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </BSTabContent>
+            </BSTab>
+        </BSTabList>
+        <BSTabSelectedContent />
+    </BSTabGroup>
+</p>
+
+@code {
+    const string REGEX_SESSION_STORAGE_KEY = nameof(REGEX_SESSION_STORAGE_KEY);
+    const string TESTS_SESSION_STORAGE_KEY = nameof(TESTS_SESSION_STORAGE_KEY);
+
+    protected string Tests { get; set; }
+    protected string RegexText { get; set; }
+    protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
+    protected IEnumerable<string> SplitList { get; set; } = new List<string>();
+    protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
+    protected string Message { get; set; }
+
+    private Regex testRegex;
+    private string prevRegexText;
+    private System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+
+    protected override async Task OnInitializedAsync()
+    {
+        RegexText = await SessionStorage.GetItemAsync(REGEX_SESSION_STORAGE_KEY);
+        Tests = await SessionStorage.GetItemAsync(TESTS_SESSION_STORAGE_KEY);
+    }
+
+    protected void Test_Click(object e)
+    {
+        if (string.IsNullOrEmpty(RegexText))
+            return;
+
+        if (prevRegexText != RegexText)
+        {
+            try
+            {
+                Console.WriteLine("Changing RegEx");
+                testRegex = new Regex(RegexText, RegexOptions.Compiled);
+                prevRegexText = RegexText;
+
+                SessionStorage.SetItem(REGEX_SESSION_STORAGE_KEY, RegexText);
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"Failed to parse a RegEx: {ex.Message}; {ex.GetType().Name}");
+                Message = "Failed to parse an expression 😒";
+                return;
+            }
+        }
+
+
+        try
+        {
+            var tests = Tests?
+                .Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
+                .Distinct();
+
+            sw.Reset();
+            sw.Start();
+            var matches = regexService.GetMatches(tests, testRegex);
+            var notEmptyMatches = matches
+                .Where(mc => mc.Value.Any());
+
+            NotEmptyMatches = matches;
+
+            MatchedStrings = matches
+                .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
+
+            SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
+            sw.Stop();
+            Message = $"{notEmptyMatches.Count()} matches in {sw.ElapsedMilliseconds} ms";
+            SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Something went wrong... {ex.Message}");
+            Message = "Error evaluating expression ☠";
+        }
+        finally
+        {
+            sw.Stop();
+        }
+    }
+}
+
