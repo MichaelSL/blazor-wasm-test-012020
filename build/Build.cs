@@ -89,6 +89,16 @@ class Build : NukeBuild
         }
     }
 
+    string FullImageName
+    {
+        get
+        {
+            var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:x64";
+            Console.WriteLine($"{nameof(FullImageName)} = {name}");
+            return name;
+        }
+    }
+
     Target BuildArmDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
         .DependsOn(Compile)
@@ -100,6 +110,19 @@ class Build : NukeBuild
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
                 .SetTag(ArmFullImageName));
+        });
+
+    Target BuildDockerContainer => _ => _
+        .NotNull(DockerPrivateRegistry)
+        .DependsOn(Compile)
+        .Executes(() =>
+        {
+            var path = Solution.GetProject("BlazorWasmRegexTest.Server").Directory;
+            Console.WriteLine($"Building Docker image in {path}");
+            DockerTasks.DockerBuild(c => c
+                .SetPath(Solution.Directory)
+                .SetFile(path / "Dockerfile")
+                .SetTag(FullImageName));
         });
 
     Target LoginToDockerRegistry => _ => _
@@ -120,5 +143,13 @@ class Build : NukeBuild
         {
             DockerTasks.DockerPush(c => c
                 .SetName(ArmFullImageName));
+        });
+
+    Target PushDockerContainer => _ => _
+        .DependsOn(BuildDockerContainer, LoginToDockerRegistry)
+        .Executes(() =>
+        {
+            DockerTasks.DockerPush(c => c
+                .SetName(FullImageName));
         });
 }
