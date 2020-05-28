@@ -151,6 +151,14 @@ span.mark-yellow {
     margin-right: 15px;
 }
 
+.centered {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    /* bring your own prefixes */
+    transform: translate(-50%, -50%);
+}
+
 @media (max-width: 767.98px) {
     .main .top-row:not(.auth) {
         display: none;
