@@ -1,16 +1,13 @@
 using System;
-using System.Linq;
 using System.Text.RegularExpressions;
 using Nuke.Common;
 using Nuke.Common.Execution;
 using Nuke.Common.Git;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
-using Nuke.Common.Tooling;
 using Nuke.Common.Tools.Docker;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Utilities.Collections;
-using static Nuke.Common.EnvironmentInfo;
 using static Nuke.Common.IO.FileSystemTasks;
 using static Nuke.Common.IO.PathConstruction;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
@@ -41,7 +38,7 @@ class Build : NukeBuild
     [GitRepository] readonly GitRepository GitRepository;
 
     AbsolutePath TestsDirectory => RootDirectory / "tests";
-    AbsolutePath ArtifactsDirectory => RootDirectory / ".artifacts";
+    AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
 
     Target Clean => _ => _
         .Before(Restore)
@@ -54,7 +51,7 @@ class Build : NukeBuild
     Target Restore => _ => _
         .Executes(() =>
         {
-            DotNetRestore(_ => _
+            DotNetRestore(s => s
                 .SetProjectFile(Solution));
         });
 
@@ -62,7 +59,7 @@ class Build : NukeBuild
         .DependsOn(Restore)
         .Executes(() =>
         {
-            DotNetBuild(_ => _
+            DotNetBuild(s => s
                 .SetProjectFile(Solution)
                 .SetConfiguration(Configuration)
                 .EnableNoRestore());
@@ -73,7 +70,7 @@ class Build : NukeBuild
         .Executes(() =>
         {
             DotNetPublish(_ => _
-                .SetProject(Solution.GetProject("BlazorWasmRegexTest.Server"))
+                .SetProject(Solution.GetProject("BlazorWasmRegex.Server"))
                 .SetOutput(ArtifactsDirectory / "publish"));
         });
 
@@ -104,12 +101,13 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() =>
         {
-            var path = Solution.GetProject("BlazorWasmRegexTest.Server").Directory;
+            var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
             Console.WriteLine($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
-                .SetTag(ArmFullImageName));
+                .SetTag(ArmFullImageName)
+                .EnableNoCache());
         });
 
     Target BuildDockerContainer => _ => _
@@ -117,12 +115,13 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() =>
         {
-            var path = Solution.GetProject("BlazorWasmRegexTest.Server").Directory;
+            var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
             Console.WriteLine($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile")
-                .SetTag(FullImageName));
+                .SetTag(FullImageName)
+                .EnableNoCache());
         });
 
     Target LoginToDockerRegistry => _ => _
