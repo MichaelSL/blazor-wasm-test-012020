@@ -65,6 +65,13 @@ class Build : NukeBuild
                 .EnableNoRestore());
         });
 
+    Target Test => _ => _
+        .DependsOn(Compile)
+        .Executes(() =>
+        {
+            Logger.Info("No tests yet :(");
+        });
+
     Target Publish => _ => _
         .DependsOn(Compile)
         .Executes(() =>
