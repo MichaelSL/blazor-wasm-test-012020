@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Nuke.Common;
 using Nuke.Common.Execution;
@@ -33,12 +35,14 @@ class Build : NukeBuild
     readonly string DockerLogin;
     [Parameter("Private Docker registry password")]
     readonly string DockerPassword;
+    [Parameter("Build version - Default is '0.1.0'")]
+    readonly string BuildVersion = "0.1.0";
 
     [Solution] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
 
     AbsolutePath TestsDirectory => RootDirectory / "tests";
-    AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
+    AbsolutePath ArtifactsDirectory => RootDirectory / ".artifacts";
 
     Target Clean => _ => _
         .Before(Restore)
@@ -60,7 +64,7 @@ class Build : NukeBuild
         .Executes(() =>
         {
             DotNetBuild(s => s
-                .SetProjectFile(Solution)
+                .SetProjectFile(Solution.GetProject("BlazorWasmRegex.Server"))
                 .SetConfiguration(Configuration)
                 .EnableNoRestore());
         });
@@ -73,12 +77,51 @@ class Build : NukeBuild
         });
 
     Target Publish => _ => _
-        .DependsOn(Compile)
+        .DependsOn(Compile, SetVersion)
         .Executes(() =>
         {
             DotNetPublish(_ => _
                 .SetProject(Solution.GetProject("BlazorWasmRegex.Server"))
                 .SetOutput(ArtifactsDirectory / "publish"));
+        });
+
+    Target SetVersion => _ => _
+        .Requires(() => BuildVersion)
+        .Triggers(CleanUpSwVersion)
+        .Executes(() =>
+        {
+            Logger.Info("Setting application version");
+            var fileText = File.ReadAllText("Directory.build.props.template");
+            fileText = fileText.Replace("$ver", BuildVersion);
+            File.WriteAllText("Directory.build.props", fileText);
+
+            Logger.Info("Updating 'service-worker.published.js'");
+            AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
+            if (!File.Exists(swFilePath))
+            {
+                Logger.Warn("No service worker file found");
+                return;
+            }
+            var swFileText = File.ReadAllLines(swFilePath).ToList();
+            DateTime utcNow = DateTime.UtcNow;
+            swFileText.Add($"// UPDATED: {utcNow:MM/dd/yy H:mm:ss.ffff}");
+            File.WriteAllLines(swFilePath, swFileText);
+        });
+
+    Target CleanUpSwVersion => _ => _
+        .After(Publish, BuildArmDockerContainer, BuildDockerContainer)
+        .Executes(() =>
+        {
+            Logger.Info("Cleaning up 'service-worker.published.js'");
+            AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
+            if (!File.Exists(swFilePath))
+            {
+                Logger.Warn("No service worker file found");
+                return;
+            }
+            var swFileText = File.ReadAllLines(swFilePath).ToList();
+            swFileText.RemoveAt(swFileText.Count - 1);
+            File.WriteAllLines(swFilePath, swFileText);
         });
 
     const string ArmTag = "arm";
@@ -88,7 +131,7 @@ class Build : NukeBuild
         get
         {
             var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:{ArmTag}";
-            Console.WriteLine($"{nameof(ArmFullImageName)} = {name}");
+            Logger.Info($"{nameof(ArmFullImageName)} = {name}");
             return name;
         }
     }
@@ -98,18 +141,18 @@ class Build : NukeBuild
         get
         {
             var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:x64";
-            Console.WriteLine($"{nameof(FullImageName)} = {name}");
+            Logger.Info($"{nameof(FullImageName)} = {name}");
             return name;
         }
     }
 
     Target BuildArmDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
-        .DependsOn(Compile)
+        .DependsOn(Compile, SetVersion)
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
-            Console.WriteLine($"Building Docker image in {path}");
+            Logger.Info($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
@@ -119,11 +162,11 @@ class Build : NukeBuild
 
     Target BuildDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
-        .DependsOn(Compile)
+        .DependsOn(Compile, SetVersion)
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
-            Console.WriteLine($"Building Docker image in {path}");
+            Logger.Info($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile")

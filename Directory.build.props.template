@@ -1,0 +1,9 @@
+<Project>
+	<PropertyGroup>
+		<Product>Blazor Regex Tester</Product>
+		<Company>Michael Samorokov</Company>
+		<Version>$ver</Version>
+		<FileVersion>$ver</FileVersion>
+		<InformationalVersion>$ver</InformationalVersion>
+	</PropertyGroup>
+</Project>
