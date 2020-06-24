@@ -33,4 +33,4 @@ jobs:
       run: chmod +x ./build.sh
     - name: Build ARM container
       id: armcontainer
-      run: ./build.sh -Target PushArmDockerContainer -DockerPrivateRegistry "${{ secrets.DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" -BuildVersion "${{ steps.gitversion.outputs.majorMinorPatch }}""
+      run: ./build.sh -Target PushArmDockerContainer -DockerPrivateRegistry "${{ secrets.DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" -BuildVersion "${{ steps.gitversion.outputs.majorMinorPatch }}"
