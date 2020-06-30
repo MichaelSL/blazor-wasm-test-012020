@@ -24,7 +24,7 @@ class Build : NukeBuild
     ///   - Microsoft VisualStudio     https://nuke.build/visualstudio
     ///   - Microsoft VSCode           https://nuke.build/vscode
 
-    public static int Main () => Execute<Build>(x => x.Compile);
+    public static int Main() => Execute<Build>(x => x.Compile);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
@@ -130,25 +130,34 @@ class Build : NukeBuild
 
     Target InsertCounterCode => _ => _
         .Triggers(CleanUpCounterCode)
-        .Requires(() => YandexCounterCode)
         .Executes(() =>
         {
-            Logger.Info("Inserting Counter code");
-            AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
-            var fileText = File.ReadAllText(filePath);
-            fileText = fileText.Replace(YandexMetrikaPlaceholder, YandexCounterCode);
-            File.WriteAllText(filePath, fileText);
+            if (!string.IsNullOrEmpty(YandexCounterCode))
+            {
+                Logger.Info("Inserting Counter code");
+                AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
+                var fileText = File.ReadAllText(filePath);
+                fileText = fileText.Replace(YandexMetrikaPlaceholder, YandexCounterCode);
+                File.WriteAllText(filePath, fileText);
+            }
         });
 
     Target CleanUpCounterCode => _ => _
         .After(Publish, BuildArmDockerContainer, BuildDockerContainer)
         .Executes(() =>
         {
-            Logger.Info("Cleaning up Counter code");
-            AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
-            var fileText = File.ReadAllText(filePath);
-            fileText = fileText.Replace(YandexCounterCode, YandexMetrikaPlaceholder);
-            File.WriteAllText(filePath, fileText);
+            if (!string.IsNullOrEmpty(YandexCounterCode))
+            {
+                Logger.Info("Cleaning up Counter code");
+                AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
+                var fileText = File.ReadAllText(filePath);
+                fileText = fileText.Replace(YandexCounterCode, YandexMetrikaPlaceholder);
+                File.WriteAllText(filePath, fileText);
+            }
+            else
+            {
+                Logger.Info("No Counter code to clean up");
+            }
         });
 
     const string ArmTag = "arm";
