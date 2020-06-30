@@ -10,6 +10,7 @@ WORKDIR /src
 COPY ["BlazorWasmRegex/Server/BlazorWasmRegex.Server.csproj", "BlazorWasmRegex/Server/"]
 COPY ["BlazorWasmRegex/Client/BlazorWasmRegex.Client.csproj", "BlazorWasmRegex/Client/"]
 COPY ["BlazorWasmRegex/Shared/BlazorWasmRegex.Shared.csproj", "BlazorWasmRegex/Shared/"]
+COPY ["Directory.Build.props", ""]
 RUN dotnet restore "BlazorWasmRegex/Server/BlazorWasmRegex.Server.csproj"
 COPY . .
 WORKDIR "/src/BlazorWasmRegex/Server"

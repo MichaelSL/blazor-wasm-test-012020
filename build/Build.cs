@@ -93,7 +93,7 @@ class Build : NukeBuild
             Logger.Info("Setting application version");
             var fileText = File.ReadAllText("Directory.build.props.template");
             fileText = fileText.Replace("$ver", BuildVersion);
-            File.WriteAllText("Directory.build.props", fileText);
+            File.WriteAllText("Directory.Build.props", fileText);
 
             Logger.Info("Updating 'service-worker.published.js'");
             AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
