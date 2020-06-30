@@ -29,6 +29,8 @@ class Build : NukeBuild
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
+    const string YandexMetrikaPlaceholder = "<!-- Yandex Counter here -->";
+
     [Parameter("Private docker registry URL (with protocol)")]
     readonly string DockerPrivateRegistry;
     [Parameter("Private Docker registry login")]
@@ -37,6 +39,8 @@ class Build : NukeBuild
     readonly string DockerPassword;
     [Parameter("Build version - Default is '0.1.0'")]
     readonly string BuildVersion = "0.1.0";
+    [Parameter("Yandex Counter code: will replace " + YandexMetrikaPlaceholder)]
+    readonly string YandexCounterCode;
 
     [Solution] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
@@ -77,7 +81,7 @@ class Build : NukeBuild
         });
 
     Target Publish => _ => _
-        .DependsOn(Compile, SetVersion)
+        .DependsOn(Compile, SetVersion, InsertCounterCode)
         .Executes(() =>
         {
             DotNetPublish(_ => _
@@ -124,6 +128,29 @@ class Build : NukeBuild
             File.WriteAllLines(swFilePath, swFileText);
         });
 
+    Target InsertCounterCode => _ => _
+        .Triggers(CleanUpCounterCode)
+        .Requires(() => YandexCounterCode)
+        .Executes(() =>
+        {
+            Logger.Info("Inserting Counter code");
+            AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
+            var fileText = File.ReadAllText(filePath);
+            fileText = fileText.Replace(YandexMetrikaPlaceholder, YandexCounterCode);
+            File.WriteAllText(filePath, fileText);
+        });
+
+    Target CleanUpCounterCode => _ => _
+        .After(Publish, BuildArmDockerContainer, BuildDockerContainer)
+        .Executes(() =>
+        {
+            Logger.Info("Cleaning up Counter code");
+            AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
+            var fileText = File.ReadAllText(filePath);
+            fileText = fileText.Replace(YandexCounterCode, YandexMetrikaPlaceholder);
+            File.WriteAllText(filePath, fileText);
+        });
+
     const string ArmTag = "arm";
     const string ImageName = "regex-tester";
     string ArmFullImageName
@@ -148,7 +175,7 @@ class Build : NukeBuild
 
     Target BuildArmDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
-        .DependsOn(Compile, SetVersion)
+        .DependsOn(Compile, SetVersion, InsertCounterCode)
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
@@ -162,7 +189,7 @@ class Build : NukeBuild
 
     Target BuildDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
-        .DependsOn(Compile, SetVersion)
+        .DependsOn(Compile, SetVersion, InsertCounterCode)
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
