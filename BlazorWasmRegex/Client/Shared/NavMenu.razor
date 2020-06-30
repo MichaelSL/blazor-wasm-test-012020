@@ -17,6 +17,12 @@
                 <span class="oi oi-info" aria-hidden="true"></span> About
             </NavLink>
         </li>
+        <li>&nbsp;</li>
+        <li class="nav-item px-3">
+            <a class="nav-link" target="_blank" href="https://github.com/MichaelSL/blazor-wasm-test-012020">
+                <span class="oi oi-fork" aria-hidden="true"></span> v @GetAppVersion()
+            </a>
+        </li>
     </ul>
 </div>
 
@@ -28,5 +34,17 @@
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private string GetAppVersion()
+    {
+        try
+        {
+            return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 }
