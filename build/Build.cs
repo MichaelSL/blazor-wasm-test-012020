@@ -94,7 +94,7 @@ class Build : NukeBuild
         .Triggers(CleanUpSwVersion)
         .Executes(() =>
         {
-            Logger.Info("Setting application version");
+            Logger.Info($"Setting application version: {BuildVersion}");
             var fileText = File.ReadAllText("Directory.build.props.template");
             fileText = fileText.Replace("$ver", BuildVersion);
             File.WriteAllText("Directory.Build.props", fileText);
