@@ -167,6 +167,10 @@ class Build : NukeBuild
         get
         {
             var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:{ArmTag}";
+            if (GitRepository.Branch != "master")
+            {
+                name += $"-{GitRepository.Branch.Replace('/', '-')}";
+            }
             Logger.Info($"{nameof(ArmFullImageName)} = {name}");
             return name;
         }
@@ -177,6 +181,10 @@ class Build : NukeBuild
         get
         {
             var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:x64";
+            if (GitRepository.Branch != "master")
+            {
+                name += $"-{GitRepository.Branch.Replace('/','-')}";
+            }
             Logger.Info($"{nameof(FullImageName)} = {name}");
             return name;
         }
