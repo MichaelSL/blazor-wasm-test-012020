@@ -117,6 +117,12 @@
 
                 SessionStorage.SetItem(REGEX_SESSION_STORAGE_KEY, RegexText);
             }
+            catch (RegexParseException regexParseEx)
+            {
+                Console.WriteLine($"Failed to parse a RegEx: {regexParseEx.Message}; {regexParseEx.Error}; {regexParseEx.Offset}");
+                Message = $"Failed to parse an expression 😒: {regexParseEx.Error} at {regexParseEx.Offset}";
+                return;
+            }
             catch (ArgumentException ex)
             {
                 Console.WriteLine($"Failed to parse a RegEx: {ex.Message}; {ex.GetType().Name}");
