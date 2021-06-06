@@ -1,6 +1,7 @@
 ﻿using BlazorWasmRegex.Shared.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -9,9 +10,13 @@ namespace BlazorWasmRegex.Shared.Services
 {
     public class RegexService : IRegexService
     {
-        public IDictionary<string, MatchCollection> GetMatches(IEnumerable<string> tests, Regex testRegex)
+        public (long, IDictionary<string, MatchCollection>) GetMatches(IEnumerable<string> tests, Regex testRegex)
         {
-            return tests.ToDictionary(input => input, input => testRegex.Matches(input));
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            var matches = tests.ToDictionary(input => input, input => testRegex.Matches(input));
+            stopwatch.Stop();
+            return (stopwatch.ElapsedMilliseconds, matches);
         }
 
         public IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex, Func<Match, string> highlighter = null)

@@ -94,7 +94,6 @@
 
     private Regex testRegex;
     private string prevRegexText;
-    private System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
     protected override async Task OnInitializedAsync()
     {
@@ -138,30 +137,23 @@
                 .Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
                 .Distinct();
 
-            sw.Reset();
-            sw.Start();
-            var matches = regexService.GetMatches(tests, testRegex);
-            var notEmptyMatches = matches
-                .Where(mc => mc.Value.Any());
+            var (elapsedMilliseconds, matches) = regexService.GetMatches(tests, testRegex);
+            //var notEmptyMatches = matches
+            //    .Where(mc => mc.Value.Any());
 
             NotEmptyMatches = matches;
+            Message = $"{NotEmptyMatches.Count()} matches in {elapsedMilliseconds} ms";
 
             MatchedStrings = matches
                 .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
             SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
-            sw.Stop();
-            Message = $"{notEmptyMatches.Count()} matches in {sw.ElapsedMilliseconds} ms";
             SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Something went wrong... {ex.Message}");
             Message = "Error evaluating expression ☠";
-        }
-        finally
-        {
-            sw.Stop();
         }
     }
 }
