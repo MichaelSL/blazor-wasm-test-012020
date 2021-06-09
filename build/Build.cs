@@ -192,7 +192,7 @@ class Build : NukeBuild
 
     Target BuildArmDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
-        .DependsOn(Compile, SetVersion, InsertCounterCode)
+        .DependsOn(SetVersion, InsertCounterCode)
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
@@ -206,7 +206,7 @@ class Build : NukeBuild
 
     Target BuildDockerContainer => _ => _
         .NotNull(DockerPrivateRegistry)
-        .DependsOn(Compile, SetVersion, InsertCounterCode)
+        .DependsOn(SetVersion, InsertCounterCode)
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
