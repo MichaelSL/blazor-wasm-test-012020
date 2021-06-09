@@ -119,12 +119,12 @@
             catch (RegexParseException regexParseEx)
             {
                 Console.WriteLine($"Failed to parse a RegEx: {regexParseEx.Message}; {regexParseEx.Error}; {regexParseEx.Offset}");
-                Message = $"Failed to parse an expression 😒: {regexParseEx.Error} at {regexParseEx.Offset}";
+                Message = $"Failed to parse an expression 😒: <b>{regexParseEx.Error}</b> at pos <b>{regexParseEx.Offset}</b>.";
                 return;
             }
             catch (ArgumentException ex)
             {
-                Console.WriteLine($"Failed to parse a RegEx: {ex.Message}; {ex.GetType().Name}");
+                Console.WriteLine($"Failed to parse a RegEx: <b>{ex.Message}</b>; {ex.GetType().Name}");
                 Message = "Failed to parse an expression 😒";
                 return;
             }
