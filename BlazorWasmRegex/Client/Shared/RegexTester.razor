@@ -138,8 +138,6 @@
                 .Distinct();
 
             var (elapsedMilliseconds, matches) = regexService.GetMatches(tests, testRegex);
-            //var notEmptyMatches = matches
-            //    .Where(mc => mc.Value.Any());
 
             NotEmptyMatches = matches;
             Message = $"{NotEmptyMatches.Count()} matches in {elapsedMilliseconds} ms";
