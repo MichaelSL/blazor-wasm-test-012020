@@ -1,4 +1,6 @@
-﻿<div class="top-row pl-4 navbar navbar-dark">
+﻿@inject NavigationManager NavManager
+
+<div class="top-row pl-4 navbar navbar-dark">
     <a class="navbar-brand" href="">Blazor Regex Test</a>
     <button class="navbar-toggler" @onclick="ToggleNavMenu">
         <span class="navbar-toggler-icon"></span>
@@ -15,6 +17,11 @@
         <li class="nav-item px-3">
             <NavLink class="nav-link" href="about">
                 <span class="oi oi-info" aria-hidden="true"></span> About
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="@NavManager.BaseUri.Replace("https://", "https://monitor.")">
+                <span class="oi oi-info" aria-hidden="true"></span> HW Monitor
             </NavLink>
         </li>
         <li>&nbsp;</li>
