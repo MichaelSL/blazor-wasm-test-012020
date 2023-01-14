@@ -10,6 +10,7 @@ using Nuke.Common.ProjectModel;
 using Nuke.Common.Tools.Docker;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Utilities.Collections;
+using Serilog;
 using static Nuke.Common.IO.FileSystemTasks;
 using static Nuke.Common.IO.PathConstruction;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
@@ -37,8 +38,9 @@ class Build : NukeBuild
     readonly string DockerLogin;
     [Parameter("Private Docker registry password")]
     readonly string DockerPassword;
-    [Parameter("Build version - Default is '0.1.0'")]
-    readonly string BuildVersion = "0.1.0";
+    [Parameter("Build number override")]
+    readonly string BuildVersion
+        = Environment.GetEnvironmentVariable("GITHUB_RUN_NUMBER") ?? null;
     [Parameter("Counter code: will replace " + CounterPlaceholder)]
     readonly string CounterCode;
 
@@ -47,6 +49,21 @@ class Build : NukeBuild
 
     AbsolutePath TestsDirectory => RootDirectory / "tests";
     AbsolutePath ArtifactsDirectory => RootDirectory / ".artifacts";
+
+    private string GetVersion()
+    {
+        var buildNumber = BuildVersion;
+        if (string.IsNullOrEmpty(buildNumber))
+        {
+            return "0.0.0.1";
+        }
+
+        var currentDateTime = DateTimeOffset.UtcNow;
+
+        var assembledVersion = $"{currentDateTime.Year}.{currentDateTime.Month}.{currentDateTime.Day}.{buildNumber}";
+        Log.Information("Assembled version: {assembledVersion}", assembledVersion);
+        return assembledVersion;
+    }
 
     Target Clean => _ => _
         .Before(Restore)
@@ -69,7 +86,6 @@ class Build : NukeBuild
         {
             DotNetBuild(s => s
                 .SetProjectFile(Solution.GetProject("BlazorWasmRegex.Server"))
-                .SetConfiguration(Configuration)
                 .EnableNoRestore());
         });
 
@@ -77,7 +93,7 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() =>
         {
-            Serilog.Log.Information("No tests yet :(");
+            Log.Information("No tests yet :(");
         });
 
     Target Publish => _ => _
@@ -90,20 +106,19 @@ class Build : NukeBuild
         });
 
     Target SetVersion => _ => _
-        .Requires(() => BuildVersion)
         .Triggers(CleanUpSwVersion)
         .Executes(() =>
         {
-            Serilog.Log.Information($"Setting application version: {BuildVersion}");
+            Log.Information($"Setting application version: {GetVersion()}");
             var fileText = File.ReadAllText("Directory.build.props.template");
-            fileText = fileText.Replace("$ver", BuildVersion);
+            fileText = fileText.Replace("$ver", GetVersion());
             File.WriteAllText("Directory.Build.props", fileText);
 
-            Serilog.Log.Information("Updating 'service-worker.published.js'");
+            Log.Information("Updating 'service-worker.published.js'");
             AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
             if (!File.Exists(swFilePath))
             {
-               Serilog.Log.Warning("No service worker file found");
+                Log.Warning("No service worker file found");
                 return;
             }
             var swFileText = File.ReadAllLines(swFilePath).ToList();
@@ -116,11 +131,11 @@ class Build : NukeBuild
         .After(Publish, BuildArmDockerContainer, BuildDockerContainer)
         .Executes(() =>
         {
-            Serilog.Log.Information("Cleaning up 'service-worker.published.js'");
+            Log.Information("Cleaning up 'service-worker.published.js'");
             AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
             if (!File.Exists(swFilePath))
             {
-               Serilog.Log.Warning("No service worker file found");
+                Log.Warning("No service worker file found");
                 return;
             }
             var swFileText = File.ReadAllLines(swFilePath).ToList();
@@ -134,7 +149,7 @@ class Build : NukeBuild
         {
             if (!string.IsNullOrEmpty(CounterCode))
             {
-                Serilog.Log.Information("Inserting Counter code");
+                Log.Information("Inserting Counter code");
                 AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
                 var fileText = File.ReadAllText(filePath);
                 fileText = fileText.Replace(CounterPlaceholder, CounterCode);
@@ -148,7 +163,7 @@ class Build : NukeBuild
         {
             if (!string.IsNullOrEmpty(CounterCode))
             {
-                Serilog.Log.Information("Cleaning up Counter code");
+                Log.Information("Cleaning up Counter code");
                 AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
                 var fileText = File.ReadAllText(filePath);
                 fileText = fileText.Replace(CounterCode, CounterPlaceholder);
@@ -156,7 +171,7 @@ class Build : NukeBuild
             }
             else
             {
-                Serilog.Log.Information("No Counter code to clean up");
+                Log.Information("No Counter code to clean up");
             }
         });
 
@@ -171,7 +186,7 @@ class Build : NukeBuild
             {
                 name += $"-{GitRepository.Branch.Replace('/', '-')}";
             }
-            Serilog.Log.Information($"{nameof(ArmFullImageName)} = {name}");
+            Log.Information($"{nameof(ArmFullImageName)} = {name}");
             return name;
         }
     }
@@ -185,7 +200,7 @@ class Build : NukeBuild
             {
                 name += $"-{GitRepository.Branch.Replace('/','-')}";
             }
-            Serilog.Log.Information($"{nameof(FullImageName)} = {name}");
+            Log.Information($"{nameof(FullImageName)} = {name}");
             return name;
         }
     }
@@ -196,7 +211,7 @@ class Build : NukeBuild
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
-            Serilog.Log.Information($"Building Docker image in {path}");
+            Log.Information($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
@@ -210,7 +225,7 @@ class Build : NukeBuild
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
-            Serilog.Log.Information($"Building Docker image in {path}");
+            Log.Information($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile")
