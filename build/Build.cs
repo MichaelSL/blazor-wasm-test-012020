@@ -29,7 +29,7 @@ class Build : NukeBuild
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-    const string YandexMetrikaPlaceholder = "<!-- Yandex Counter here -->";
+    const string CounterPlaceholder = "<!-- Web Counter here -->";
 
     [Parameter("Private docker registry URL (with protocol)")]
     readonly string DockerPrivateRegistry;
@@ -39,8 +39,8 @@ class Build : NukeBuild
     readonly string DockerPassword;
     [Parameter("Build version - Default is '0.1.0'")]
     readonly string BuildVersion = "0.1.0";
-    [Parameter("Yandex Counter code: will replace " + YandexMetrikaPlaceholder)]
-    readonly string YandexCounterCode;
+    [Parameter("Counter code: will replace " + CounterPlaceholder)]
+    readonly string CounterCode;
 
     [Solution] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
@@ -77,7 +77,7 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() =>
         {
-            Logger.Info("No tests yet :(");
+            Serilog.Log.Information("No tests yet :(");
         });
 
     Target Publish => _ => _
@@ -94,16 +94,16 @@ class Build : NukeBuild
         .Triggers(CleanUpSwVersion)
         .Executes(() =>
         {
-            Logger.Info($"Setting application version: {BuildVersion}");
+            Serilog.Log.Information($"Setting application version: {BuildVersion}");
             var fileText = File.ReadAllText("Directory.build.props.template");
             fileText = fileText.Replace("$ver", BuildVersion);
             File.WriteAllText("Directory.Build.props", fileText);
 
-            Logger.Info("Updating 'service-worker.published.js'");
+            Serilog.Log.Information("Updating 'service-worker.published.js'");
             AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
             if (!File.Exists(swFilePath))
             {
-                Logger.Warn("No service worker file found");
+               Serilog.Log.Warning("No service worker file found");
                 return;
             }
             var swFileText = File.ReadAllLines(swFilePath).ToList();
@@ -116,11 +116,11 @@ class Build : NukeBuild
         .After(Publish, BuildArmDockerContainer, BuildDockerContainer)
         .Executes(() =>
         {
-            Logger.Info("Cleaning up 'service-worker.published.js'");
+            Serilog.Log.Information("Cleaning up 'service-worker.published.js'");
             AbsolutePath swFilePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "service-worker.published.js";
             if (!File.Exists(swFilePath))
             {
-                Logger.Warn("No service worker file found");
+               Serilog.Log.Warning("No service worker file found");
                 return;
             }
             var swFileText = File.ReadAllLines(swFilePath).ToList();
@@ -132,12 +132,12 @@ class Build : NukeBuild
         .Triggers(CleanUpCounterCode)
         .Executes(() =>
         {
-            if (!string.IsNullOrEmpty(YandexCounterCode))
+            if (!string.IsNullOrEmpty(CounterCode))
             {
-                Logger.Info("Inserting Counter code");
+                Serilog.Log.Information("Inserting Counter code");
                 AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
                 var fileText = File.ReadAllText(filePath);
-                fileText = fileText.Replace(YandexMetrikaPlaceholder, YandexCounterCode);
+                fileText = fileText.Replace(CounterPlaceholder, CounterCode);
                 File.WriteAllText(filePath, fileText);
             }
         });
@@ -146,17 +146,17 @@ class Build : NukeBuild
         .After(Publish, BuildArmDockerContainer, BuildDockerContainer)
         .Executes(() =>
         {
-            if (!string.IsNullOrEmpty(YandexCounterCode))
+            if (!string.IsNullOrEmpty(CounterCode))
             {
-                Logger.Info("Cleaning up Counter code");
+                Serilog.Log.Information("Cleaning up Counter code");
                 AbsolutePath filePath = Solution.GetProject("BlazorWasmRegex.Client").Directory / "wwwroot" / "index.html";
                 var fileText = File.ReadAllText(filePath);
-                fileText = fileText.Replace(YandexCounterCode, YandexMetrikaPlaceholder);
+                fileText = fileText.Replace(CounterCode, CounterPlaceholder);
                 File.WriteAllText(filePath, fileText);
             }
             else
             {
-                Logger.Info("No Counter code to clean up");
+                Serilog.Log.Information("No Counter code to clean up");
             }
         });
 
@@ -171,7 +171,7 @@ class Build : NukeBuild
             {
                 name += $"-{GitRepository.Branch.Replace('/', '-')}";
             }
-            Logger.Info($"{nameof(ArmFullImageName)} = {name}");
+            Serilog.Log.Information($"{nameof(ArmFullImageName)} = {name}");
             return name;
         }
     }
@@ -185,7 +185,7 @@ class Build : NukeBuild
             {
                 name += $"-{GitRepository.Branch.Replace('/','-')}";
             }
-            Logger.Info($"{nameof(FullImageName)} = {name}");
+            Serilog.Log.Information($"{nameof(FullImageName)} = {name}");
             return name;
         }
     }
@@ -196,7 +196,7 @@ class Build : NukeBuild
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
-            Logger.Info($"Building Docker image in {path}");
+            Serilog.Log.Information($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
@@ -210,7 +210,7 @@ class Build : NukeBuild
         .Executes(() =>
         {
             var path = Solution.GetProject("BlazorWasmRegex.Server").Directory;
-            Logger.Info($"Building Docker image in {path}");
+            Serilog.Log.Information($"Building Docker image in {path}");
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile")
