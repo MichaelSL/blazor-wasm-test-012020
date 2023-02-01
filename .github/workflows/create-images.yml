@@ -41,7 +41,7 @@ jobs:
       run: chmod +x ./build.sh
     - name: Build ARM container
       id: armcontainer
-      run: ./build.sh -Target PushArmDockerContainer -DockerPrivateRegistry "${{ secrets.DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.DOCKER_REGISTRY_PASSWORD }}"
+      run: ./build.sh -Target PushArmDockerContainer -DockerPrivateRegistry "${{ secrets.PRIVATE_DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.PRIVATE_DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.PRIVATE_DOCKER_REGISTRY_PASSWORD }}"
     - name: Build x64 container
       id: x64container
-      run: ./build.sh -Target PushDockerContainer -DockerPrivateRegistry "${{ secrets.DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.DOCKER_REGISTRY_PASSWORD }}"
+      run: ./build.sh -Target PushDockerContainer -DockerPrivateRegistry "${{ secrets.PRIVATE_DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.PRIVATE_DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.PRIVATE_DOCKER_REGISTRY_PASSWORD }}"
