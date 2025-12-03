@@ -99,6 +99,7 @@
 @code {
     const string REGEX_SESSION_STORAGE_KEY = nameof(REGEX_SESSION_STORAGE_KEY);
     const string TESTS_SESSION_STORAGE_KEY = nameof(TESTS_SESSION_STORAGE_KEY);
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
 
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
@@ -151,7 +152,7 @@
                 if (Multiline) options |= RegexOptions.Multiline;
                 if (Singleline) options |= RegexOptions.Singleline;
                 
-                testRegex = new Regex(RegexText, options);
+                testRegex = new Regex(RegexText, options, RegexTimeout);
                 prevRegexConfig = currentConfig;
 
                 await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
@@ -190,6 +191,11 @@
 
             SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
             await LocalStorage.SetItemAsync(TESTS_SESSION_STORAGE_KEY, Tests);
+        }
+        catch (RegexMatchTimeoutException timeoutEx)
+        {
+            Console.WriteLine($"RegEx timed out: {timeoutEx.Message}");
+            Message = "⏱ Expression timed out - possible catastrophic backtracking";
         }
         catch (Exception ex)
         {
