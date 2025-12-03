@@ -22,7 +22,9 @@ namespace BlazorWasmRegex.Shared.Services
                 return WebUtility.HtmlEncode(input);
             }
 
-            var result = new StringBuilder();
+            // Pre-size the StringBuilder to reduce reallocations
+            var result = new StringBuilder(input.Length + matches.Count * 50);
+            ReadOnlySpan<char> inputSpan = input.AsSpan();
             int lastIndex = 0;
 
             foreach (Match match in matches)
@@ -32,12 +34,14 @@ namespace BlazorWasmRegex.Shared.Services
                     // Add the text before the match (HTML encoded)
                     if (match.Index > lastIndex)
                     {
-                        result.Append(WebUtility.HtmlEncode(input.Substring(lastIndex, match.Index - lastIndex)));
+                        var beforeMatch = inputSpan.Slice(lastIndex, match.Index - lastIndex);
+                        result.Append(WebUtility.HtmlEncode(beforeMatch.ToString()));
                     }
 
                     // Add the matched text wrapped in a span (content HTML encoded)
                     result.Append($"<span class='{className}'>");
-                    result.Append(WebUtility.HtmlEncode(match.Value));
+                    var matchText = inputSpan.Slice(match.Index, match.Length);
+                    result.Append(WebUtility.HtmlEncode(matchText.ToString()));
                     result.Append("</span>");
 
                     lastIndex = match.Index + match.Length;
@@ -47,7 +51,8 @@ namespace BlazorWasmRegex.Shared.Services
             // Add any remaining text after the last match (HTML encoded)
             if (lastIndex < input.Length)
             {
-                result.Append(WebUtility.HtmlEncode(input.Substring(lastIndex)));
+                var remaining = inputSpan.Slice(lastIndex);
+                result.Append(WebUtility.HtmlEncode(remaining.ToString()));
             }
 
             return result.ToString();
