@@ -43,7 +43,7 @@ class Build : NukeBuild
     [Parameter("Counter code: will replace " + CounterPlaceholder)]
     readonly string CounterCode;
 
-    [Solution] readonly Solution Solution;
+    [Solution(SuppressBuildProjectCheck = true)] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
 
     AbsolutePath TestsDirectory => RootDirectory / "tests";
@@ -92,7 +92,24 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() =>
         {
-            Log.Information("No tests yet :(");
+            var testProjects = Solution.AllProjects
+                .Where(p => p.Name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (!testProjects.Any())
+            {
+                Log.Information("No test projects found.");
+                return;
+            }
+
+            foreach (var proj in testProjects)
+            {
+                Log.Information($"Running tests: {proj.Name}");
+                DotNetTest(s => s
+                    .SetProjectFile(proj)
+                    .SetConfiguration(Configuration)
+                    .EnableNoBuild());
+            }
         });
 
     Target Publish => _ => _
