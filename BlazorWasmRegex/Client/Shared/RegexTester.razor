@@ -91,6 +91,54 @@
                     </ul>
                 </BSTabContent>
             </BSTab>
+            <BSTab>
+                <BSTabLabel>Capture Groups</BSTabLabel>
+                <BSTabContent>
+                    @if (CaptureGroupData.Any())
+                    {
+                        <ul class="list-group">
+                            @foreach (var testData in CaptureGroupData)
+                            {
+                                <li class="list-group-item">
+                                    <strong>@testData.TestString</strong>
+                                </li>
+                                @foreach (var matchData in testData.Matches)
+                                {
+                                    <li class="list-group-item">
+                                        <div style="padding-left: 1rem;">
+                                            <strong>Match @matchData.MatchIndex</strong> (Index: @matchData.Index, Length: @matchData.Length)
+                                            <ul class="list-group" style="margin-top: 0.5rem;">
+                                                @foreach (var group in matchData.Groups)
+                                                {
+                                                    <li class="list-group-item">
+                                                        <div class="hr-flex-container">
+                                                            <span class="space-out">
+                                                                <strong>@group.Name:</strong>
+                                                            </span>
+                                                            <span class="space-out">
+                                                                "@group.Value"
+                                                            </span>
+                                                            <span class="space-out">
+                                                                (Index: @group.Index, Length: @group.Length)
+                                                            </span>
+                                                        </div>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info" role="alert">
+                            No capture groups found. Use named groups like <code>(?&lt;name&gt;pattern)</code> or numbered groups <code>(pattern)</code> to see capture details here.
+                        </div>
+                    }
+                </BSTabContent>
+            </BSTab>
         </BSTabList>
         <BSTabSelectedContent />
     </BSTabGroup>
@@ -109,10 +157,34 @@
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
     protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
+    protected List<TestCaptureGroupData> CaptureGroupData { get; set; } = new();
     protected string Message { get; set; }
 
     private Regex testRegex;
     private string prevRegexConfig;
+
+    // Data structures for capture groups display
+    public class TestCaptureGroupData
+    {
+        public string TestString { get; set; }
+        public List<MatchCaptureGroupData> Matches { get; set; } = new();
+    }
+
+    public class MatchCaptureGroupData
+    {
+        public int MatchIndex { get; set; }
+        public int Index { get; set; }
+        public int Length { get; set; }
+        public List<CaptureGroupInfo> Groups { get; set; } = new();
+    }
+
+    public class CaptureGroupInfo
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+        public int Index { get; set; }
+        public int Length { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -190,6 +262,10 @@
                 .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
             SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
+            
+            // Extract capture group data
+            CaptureGroupData = ExtractCaptureGroupData(matches);
+            
             await LocalStorage.SetItemAsync(TESTS_SESSION_STORAGE_KEY, Tests);
         }
         catch (RegexMatchTimeoutException timeoutEx)
@@ -202,6 +278,62 @@
             Console.WriteLine($"Something went wrong... {ex.Message}");
             Message = "Error evaluating expression ☠";
         }
+    }
+
+    private List<TestCaptureGroupData> ExtractCaptureGroupData(IDictionary<string, MatchCollection> matches)
+    {
+        var result = new List<TestCaptureGroupData>();
+
+        foreach (var kvp in matches.Where(m => m.Value.Count > 0))
+        {
+            var testData = new TestCaptureGroupData
+            {
+                TestString = kvp.Key
+            };
+
+            int matchIndex = 0;
+            foreach (Match match in kvp.Value)
+            {
+                var matchData = new MatchCaptureGroupData
+                {
+                    MatchIndex = matchIndex++,
+                    Index = match.Index,
+                    Length = match.Length
+                };
+
+                // Get group names from the regex
+                var groupNames = testRegex.GetGroupNames();
+
+                foreach (var groupName in groupNames)
+                {
+                    var group = match.Groups[groupName];
+                    if (group.Success)
+                    {
+                        matchData.Groups.Add(new CaptureGroupInfo
+                        {
+                            Name = groupName,
+                            Value = group.Value,
+                            Index = group.Index,
+                            Length = group.Length
+                        });
+                    }
+                }
+
+                // Only add match data if it has groups (besides the default "0" group)
+                if (matchData.Groups.Count > 0)
+                {
+                    testData.Matches.Add(matchData);
+                }
+            }
+
+            // Only add test data if it has matches with groups
+            if (testData.Matches.Count > 0)
+            {
+                result.Add(testData);
+            }
+        }
+
+        return result;
     }
 }
 
