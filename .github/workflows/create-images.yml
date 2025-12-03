@@ -39,9 +39,15 @@ jobs:
     - name: Set build script eXecutable
       id: builscriptexec
       run: chmod +x ./build.sh
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build ARM container
       id: armcontainer
-      run: ./build.sh -Target PushArmDockerContainer -DockerPrivateRegistry "${{ secrets.PRIVATE_DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.PRIVATE_DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.PRIVATE_DOCKER_REGISTRY_PASSWORD }}"
+      run: ./build.sh -Target PushArmDockerContainer -GitHubOwner "${{ github.repository_owner }}" -GitHubToken "${{ secrets.GITHUB_TOKEN }}"
     - name: Build x64 container
       id: x64container
-      run: ./build.sh -Target PushDockerContainer -DockerPrivateRegistry "${{ secrets.PRIVATE_DOCKER_REGISTRY }}" -DockerLogin "${{ secrets.PRIVATE_DOCKER_REGISTRY_LOGIN }}" -DockerPassword "${{ secrets.PRIVATE_DOCKER_REGISTRY_PASSWORD }}"
+      run: ./build.sh -Target PushDockerContainer -GitHubOwner "${{ github.repository_owner }}" -GitHubToken "${{ secrets.GITHUB_TOKEN }}"
