@@ -9,6 +9,21 @@
     <input class="form-control" @bind="RegexText" />
 </p>
 <p>
+    <label>Options:</label>
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="checkbox" @bind="IgnoreCase" id="ignoreCase">
+        <label class="form-check-label" for="ignoreCase">Ignore Case</label>
+    </div>
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="checkbox" @bind="Multiline" id="multiline">
+        <label class="form-check-label" for="multiline">Multiline</label>
+    </div>
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="checkbox" @bind="Singleline" id="singleline">
+        <label class="form-check-label" for="singleline">Singleline</label>
+    </div>
+</p>
+<p>
     <label>Tests:</label>
     <textarea class="form-control" @bind="Tests" rows="10"></textarea>
 </p>
@@ -87,6 +102,9 @@
 
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
+    protected bool IgnoreCase { get; set; }
+    protected bool Multiline { get; set; }
+    protected bool Singleline { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
     protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
@@ -111,7 +129,12 @@
             try
             {
                 Console.WriteLine("Changing RegEx");
-                testRegex = new Regex(RegexText, RegexOptions.Compiled);
+                var options = RegexOptions.Compiled;
+                if (IgnoreCase) options |= RegexOptions.IgnoreCase;
+                if (Multiline) options |= RegexOptions.Multiline;
+                if (Singleline) options |= RegexOptions.Singleline;
+                
+                testRegex = new Regex(RegexText, options);
                 prevRegexText = RegexText;
 
                 await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
