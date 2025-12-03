@@ -97,8 +97,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY);
-        Tests = await LocalStorage.GetItemAsync<string>(TESTS_SESSION_STORAGE_KEY);
+        RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
+        Tests = await LocalStorage.GetItemAsync<string>(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
     }
 
     protected async Task Test_Click(object e)
