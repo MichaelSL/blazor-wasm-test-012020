@@ -214,7 +214,7 @@
     protected string Message { get; set; }
 
     private Regex testRegex;
-    private string prevRegexConfig;
+    private (string RegexText, bool IgnoreCase, bool Multiline, bool Singleline)? prevRegexConfig;
 
     // Data structures for capture groups display
     public class TestCaptureGroupData
@@ -264,6 +264,7 @@
             catch (JsonException)
             {
                 // Fallback for legacy pipe-delimited format: "{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}"
+                // Note: RegexText is loaded separately; we only parse the options (last 3 values) here.
                 var parts = savedOptions.Split('|');
                 if (parts.Length >= 4)
                 {
@@ -315,7 +316,9 @@
             return;
 
         var currentOptionsData = new RegexOptionsData(IgnoreCase, Multiline, Singleline);
-        var currentConfig = $"{RegexText}|{JsonSerializer.Serialize(currentOptionsData)}";
+        var currentOptionsJson = JsonSerializer.Serialize(currentOptionsData);
+        // Use a tuple-based comparison for change detection to avoid delimiter issues
+        var currentConfig = (RegexText, IgnoreCase, Multiline, Singleline);
         if (prevRegexConfig != currentConfig)
         {
             try
@@ -327,10 +330,10 @@
                 if (Singleline) options |= RegexOptions.Singleline;
                 
                 testRegex = new Regex(RegexText, options, RegexTimeout);
-                prevRegexConfig = currentConfig;
+                prevRegexConfig = (RegexText, IgnoreCase, Multiline, Singleline);
 
                 await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
-                await LocalStorage.SetItemAsync("REGEX_OPTIONS", JsonSerializer.Serialize(currentOptionsData));
+                await LocalStorage.SetItemAsync("REGEX_OPTIONS", currentOptionsJson);
             }
             catch (RegexParseException regexParseEx)
             {
