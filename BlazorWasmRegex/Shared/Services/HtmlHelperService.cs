@@ -17,22 +17,40 @@ namespace BlazorWasmRegex.Shared.Services
 
         public string GetMarkedSpans(string input, MatchCollection matches, string className)
         {
-            for (int i = 0; i < matches.Count; i++)
+            if (matches.Count == 0)
             {
-                var m = matches[i];
-                if (m.Success)
-                {
-                    var indexAdjustment = ($"<span class='{className}'>".Length + "</span>".Length) * i;
+                return WebUtility.HtmlEncode(input);
+            }
 
-                    input =
-                        (i == 0 ? WebUtility.HtmlEncode(input.Substring(0, m.Index + indexAdjustment)) : input.Substring(0, m.Index + indexAdjustment))
-                        + $"<span class='{className}'>"
-                        + WebUtility.HtmlEncode(input.Substring(m.Index + indexAdjustment, m.Length))
-                        + "</span>"
-                        + WebUtility.HtmlEncode(input.Substring(m.Index + m.Length + indexAdjustment));
+            var result = new StringBuilder();
+            int lastIndex = 0;
+
+            foreach (Match match in matches)
+            {
+                if (match.Success)
+                {
+                    // Add the text before the match (HTML encoded)
+                    if (match.Index > lastIndex)
+                    {
+                        result.Append(WebUtility.HtmlEncode(input.Substring(lastIndex, match.Index - lastIndex)));
+                    }
+
+                    // Add the matched text wrapped in a span (content HTML encoded)
+                    result.Append($"<span class='{className}'>");
+                    result.Append(WebUtility.HtmlEncode(match.Value));
+                    result.Append("</span>");
+
+                    lastIndex = match.Index + match.Length;
                 }
             }
-            return input;
+
+            // Add any remaining text after the last match (HTML encoded)
+            if (lastIndex < input.Length)
+            {
+                result.Append(WebUtility.HtmlEncode(input.Substring(lastIndex)));
+            }
+
+            return result.ToString();
         }
     }
 }
