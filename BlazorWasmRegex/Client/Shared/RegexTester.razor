@@ -258,10 +258,14 @@
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             Message = $"{NotEmptyMatches.Count()} matches in {elapsedMilliseconds} ms";
 
+            // Only show inputs that have matches
             MatchedStrings = matches
+                .Where(mc => mc.Value.Count > 0)
                 .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
-            SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
+            // Only show inputs that have split results (where split actually occurred)
+            var splitResults = regexService.GetSplitList(tests, testRegex);
+            SplitList = splitResults.Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
             
             // Extract capture group data
             CaptureGroupData = ExtractCaptureGroupData(matches);
