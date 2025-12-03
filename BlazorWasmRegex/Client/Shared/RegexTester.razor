@@ -2,9 +2,12 @@
 @using Blazored.LocalStorage
 @using BlazorWasmRegex.Shared.Services
 @using BlazorStrap
+@using Microsoft.JSInterop
+@using System.Text.Json
 @inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
 @inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
 @inject ILocalStorageService LocalStorage
+@inject IJSRuntime JS
 
 <p>
     <label>Samples:</label>
@@ -35,6 +38,11 @@
     </div>
 </p>
 <p>
+    <label>Replacement Pattern:</label>
+    <input class="form-control" @bind="ReplacementPattern" placeholder="e.g., $1, ${name}, or literal text" />
+    <small class="form-text text-muted">Use $1, $2 for numbered groups or ${name} for named groups</small>
+</p>
+<p>
     <label>Tests:</label>
     <textarea class="form-control" @bind="Tests" rows="10"></textarea>
 </p>
@@ -42,6 +50,10 @@
     <div class="hr-flex-container">
         <div>
             <BSButton Color="BSColor.Primary" OnClick="@Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
+            <BSButton Color="BSColor.Success" OnClick="@Replace_Click" Disabled="@string.IsNullOrEmpty(ReplacementPattern)"><span class="oi oi-loop-circular" aria-hidden="true">&nbsp;</span>Replace</BSButton>
+            <BSButton Color="BSColor.Secondary" OnClick="@ExportAsJson" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>JSON</BSButton>
+            <BSButton Color="BSColor.Secondary" OnClick="@ExportAsCsv" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>CSV</BSButton>
+            <BSButton Color="BSColor.Secondary" OnClick="@ExportAsText" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>Text</BSButton>
         </div>
         <div class="space-out">
             <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@((MarkupString)Message)
@@ -150,6 +162,33 @@
                     }
                 </BSTabContent>
             </BSTab>
+            <BSTab>
+                <BSTabLabel>Replace</BSTabLabel>
+                <BSTabContent>
+                    @if (ReplacedStrings.Any())
+                    {
+                        <ul class="list-group">
+                            @foreach (var item in ReplacedStrings)
+                            {
+                                <li class="list-group-item">
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <strong>Original:</strong> <code>@item.Key</code>
+                                    </div>
+                                    <div>
+                                        <strong>Replaced:</strong> <code>@item.Value</code>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info" role="alert">
+                            Enter a replacement pattern and click the <strong>Replace</strong> button to see results.
+                        </div>
+                    }
+                </BSTabContent>
+            </BSTab>
         </BSTabList>
         <BSTabSelectedContent />
     </BSTabGroup>
@@ -163,12 +202,14 @@
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
     protected string SelectedSample { get; set; }
+    protected string ReplacementPattern { get; set; }
     protected bool IgnoreCase { get; set; }
     protected bool Multiline { get; set; }
     protected bool Singleline { get; set; }
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
     protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
+    protected IDictionary<string, string> ReplacedStrings { get; set; } = new Dictionary<string, string>();
     protected List<TestCaptureGroupData> CaptureGroupData { get; set; } = new();
     protected string Message { get; set; }
 
@@ -382,6 +423,133 @@
         }
 
         return result;
+    }
+
+    protected async Task Replace_Click(object e)
+    {
+        if (string.IsNullOrEmpty(RegexText) || string.IsNullOrEmpty(ReplacementPattern) || testRegex == null)
+            return;
+
+        try
+        {
+            var tests = Tests?
+                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct();
+
+            ReplacedStrings = regexService.GetReplacedStrings(tests, testRegex, ReplacementPattern);
+            Message = $"Replaced in {ReplacedStrings.Count} test strings";
+        }
+        catch (RegexMatchTimeoutException timeoutEx)
+        {
+            Console.WriteLine($"RegEx timed out: {timeoutEx.Message}");
+            Message = "⏱ Expression timed out - possible catastrophic backtracking";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Replace error: {ex.Message}");
+            Message = "Error during replace operation ☠";
+        }
+    }
+
+    private async Task ExportAsJson(object e)
+    {
+        try
+        {
+            var exportData = NotEmptyMatches.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.Cast<Match>().Select(m => new
+                {
+                    Value = m.Value,
+                    Index = m.Index,
+                    Length = m.Length,
+                    Groups = m.Groups.Cast<Group>().Skip(1).Select(g => new
+                    {
+                        Value = g.Value,
+                        Index = g.Index,
+                        Length = g.Length
+                    }).ToList()
+                }).ToList()
+            );
+
+            var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            await JS.InvokeVoidAsync("downloadFile", "matches.json", json, "application/json");
+            Message = "✓ Exported matches as JSON";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export JSON error: {ex.Message}");
+            Message = "Error exporting JSON ☠";
+        }
+    }
+
+    private async Task ExportAsCsv(object e)
+    {
+        try
+        {
+            var csv = new System.Text.StringBuilder();
+            csv.AppendLine("Test String,Match Value,Match Index,Match Length");
+
+            foreach (var kvp in NotEmptyMatches)
+            {
+                foreach (Match match in kvp.Value)
+                {
+                    csv.AppendLine($"\"{EscapeCsv(kvp.Key)}\",\"{EscapeCsv(match.Value)}\",{match.Index},{match.Length}");
+                }
+            }
+
+            await JS.InvokeVoidAsync("downloadFile", "matches.csv", csv.ToString(), "text/csv");
+            Message = "✓ Exported matches as CSV";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export CSV error: {ex.Message}");
+            Message = "Error exporting CSV ☠";
+        }
+    }
+
+    private async Task ExportAsText(object e)
+    {
+        try
+        {
+            var text = new System.Text.StringBuilder();
+            text.AppendLine($"Regex Pattern: {RegexText}");
+            text.AppendLine($"Total Matches: {NotEmptyMatches.Sum(kvp => kvp.Value.Count())}");
+            text.AppendLine($"Test Strings with Matches: {NotEmptyMatches.Count()}");
+            text.AppendLine();
+
+            foreach (var kvp in NotEmptyMatches)
+            {
+                text.AppendLine($"Test String: {kvp.Key}");
+                text.AppendLine($"Matches ({kvp.Value.Count}):");
+                
+                foreach (Match match in kvp.Value)
+                {
+                    text.AppendLine($"  - Value: \"{match.Value}\" (Index: {match.Index}, Length: {match.Length})");
+                }
+                
+                text.AppendLine();
+            }
+
+            await JS.InvokeVoidAsync("downloadFile", "matches.txt", text.ToString(), "text/plain");
+            Message = "✓ Exported matches as Text";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export Text error: {ex.Message}");
+            Message = "Error exporting Text ☠";
+        }
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        
+        return value.Replace("\"", "\"\"");
     }
 }
 
