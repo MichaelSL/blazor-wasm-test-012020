@@ -270,27 +270,36 @@
         if (!string.IsNullOrEmpty(pattern))
         {
             RegexText = pattern;
+            
+            // Auto-populate test data if Tests field is empty
+            if (string.IsNullOrWhiteSpace(Tests))
+            {
+                Tests = GetSampleDataForSample(SelectedSample);
+            }
+            
             // Force recompile next Test_Click by resetting prev config
             prevRegexConfig = null;
             await Test_Click(null);
         }
     }
 
+    private static readonly Dictionary<string, (string Pattern, string SampleData)> SamplePatterns = new()
+    {
+        { "Email", (SampleRegexLibrary.EmailPattern, SampleRegexLibrary.EmailSampleData) },
+        { "Phone", (SampleRegexLibrary.PhonePattern, SampleRegexLibrary.PhoneSampleData) },
+        { "Url", (SampleRegexLibrary.UrlPattern, SampleRegexLibrary.UrlSampleData) }
+    };
+
     private static string GetPatternForSample(string sample)
     {
         if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
+        return SamplePatterns.TryGetValue(sample, out var value) ? value.Pattern : string.Empty;
+    }
 
-        switch (sample)
-        {
-            case "Email":
-                return SampleRegexLibrary.EmailPattern;
-            case "Phone":
-                return SampleRegexLibrary.PhonePattern;
-            case "Url":
-                return SampleRegexLibrary.UrlPattern;
-            default:
-                return string.Empty;
-        }
+    private static string GetSampleDataForSample(string sample)
+    {
+        if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
+        return SamplePatterns.TryGetValue(sample, out var value) ? value.SampleData : string.Empty;
     }
 
     protected async Task Test_Click(object e)
