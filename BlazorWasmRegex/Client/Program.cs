@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using BlazorStrap;
 using BlazorWasmRegex.Shared.Interfaces;
 using BlazorWasmRegex.Shared.Services;
-using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
+using Blazored.LocalStorage;
 
 namespace BlazorWasmRegex.Client
 {
@@ -19,7 +19,7 @@ namespace BlazorWasmRegex.Client
         public static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            builder.RootComponents.Add<App>("app");
+            builder.RootComponents.Add<App>("#app");
 
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             ConfigureServices(builder.Services);
@@ -29,8 +29,8 @@ namespace BlazorWasmRegex.Client
 
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddBootstrapCss();
-            services.AddStorage();
+            services.AddBlazorStrap();
+            services.AddBlazoredLocalStorage();
 
             services.AddTransient<IRegexService, RegexService>();
             services.AddTransient<IHtmlHelperService, HtmlHelperService>();

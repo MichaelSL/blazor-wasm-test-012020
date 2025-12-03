@@ -1,8 +1,8 @@
 ﻿@using System.Text.RegularExpressions
-@using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
+@using Blazored.LocalStorage
 @inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
 @inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
-@inject SessionStorage SessionStorage
+@inject ILocalStorageService LocalStorage
 
 <p>
     <label>Regex:</label>
@@ -97,11 +97,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        RegexText = await SessionStorage.GetItemAsync(REGEX_SESSION_STORAGE_KEY);
-        Tests = await SessionStorage.GetItemAsync(TESTS_SESSION_STORAGE_KEY);
+        RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY);
+        Tests = await LocalStorage.GetItemAsync<string>(TESTS_SESSION_STORAGE_KEY);
     }
 
-    protected void Test_Click(object e)
+    protected async Task Test_Click(object e)
     {
         if (string.IsNullOrEmpty(RegexText))
             return;
@@ -114,7 +114,7 @@
                 testRegex = new Regex(RegexText, RegexOptions.Compiled);
                 prevRegexText = RegexText;
 
-                SessionStorage.SetItem(REGEX_SESSION_STORAGE_KEY, RegexText);
+                await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
             }
             catch (RegexParseException regexParseEx)
             {
@@ -146,7 +146,7 @@
                 .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
 
             SplitList = regexService.GetSplitList(tests, testRegex).Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
-            SessionStorage.SetItem(TESTS_SESSION_STORAGE_KEY, Tests);
+            await LocalStorage.SetItemAsync(TESTS_SESSION_STORAGE_KEY, Tests);
         }
         catch (Exception ex)
         {
