@@ -45,7 +45,10 @@
                 });
             } else {
                 // In production, register the service worker for PWA functionality
-                navigator.serviceWorker.register('service-worker.js');
+                navigator.serviceWorker.register('service-worker.js')
+                    .catch(function(error) {
+                        console.warn('Service worker registration failed:', error);
+                    });
             }
         }
 
