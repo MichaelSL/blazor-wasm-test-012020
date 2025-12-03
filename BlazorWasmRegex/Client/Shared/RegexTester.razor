@@ -111,12 +111,28 @@
     protected string Message { get; set; }
 
     private Regex testRegex;
-    private string prevRegexText;
+    private string prevRegexConfig;
 
     protected override async Task OnInitializedAsync()
     {
         RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
         Tests = await LocalStorage.GetItemAsync<string>(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
+        var savedOptions = await LocalStorage.GetItemAsync<string>("REGEX_OPTIONS");
+        if (!string.IsNullOrEmpty(savedOptions))
+        {
+            // Format: "{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}"
+            var parts = savedOptions.Split('|');
+            if (parts.Length >= 4)
+            {
+                // We do not override RegexText here; it is loaded separately above.
+                bool.TryParse(parts[^3], out var ignoreCase);
+                bool.TryParse(parts[^2], out var multiline);
+                bool.TryParse(parts[^1], out var singleline);
+                IgnoreCase = ignoreCase;
+                Multiline = multiline;
+                Singleline = singleline;
+            }
+        }
     }
 
     protected async Task Test_Click(object e)
@@ -124,7 +140,8 @@
         if (string.IsNullOrEmpty(RegexText))
             return;
 
-        if (prevRegexText != RegexText)
+        var currentConfig = $"{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}";
+        if (prevRegexConfig != currentConfig)
         {
             try
             {
@@ -135,9 +152,10 @@
                 if (Singleline) options |= RegexOptions.Singleline;
                 
                 testRegex = new Regex(RegexText, options);
-                prevRegexText = RegexText;
+                prevRegexConfig = currentConfig;
 
                 await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
+                await LocalStorage.SetItemAsync("REGEX_OPTIONS", currentConfig);
             }
             catch (RegexParseException regexParseEx)
             {
