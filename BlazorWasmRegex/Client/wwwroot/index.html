@@ -28,13 +28,25 @@
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
-        // Disable service worker in development to avoid caching issues
+        // Service worker handling: register in production, unregister in development
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
-            });
+            const isLocalhost = Boolean(
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '[::1]' ||
+                window.location.hostname.match(/^127(?:\.\d+){0,2}\.\d+$/)
+            );
+
+            if (isLocalhost) {
+                // In development, unregister service workers to avoid caching issues
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+            } else {
+                // In production, register the service worker for PWA functionality
+                navigator.serviceWorker.register('service-worker.js');
+            }
         }
 
         // File download helper function
