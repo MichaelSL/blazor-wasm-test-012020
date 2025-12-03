@@ -39,5 +39,13 @@ namespace BlazorWasmRegex.Shared.Services
                 .Select(item => testRegex.Split(item))
                 .Where(splitGroup => splitGroup.Length > 1 && splitGroup.Any(i => !string.IsNullOrEmpty(i)));
         }
+
+        public IDictionary<string, string> GetReplacedStrings(IEnumerable<string> tests, Regex testRegex, string replacement)
+        {
+            return tests.ToDictionary(
+                input => input,
+                input => testRegex.Replace(input, replacement)
+            );
+        }
     }
 }
