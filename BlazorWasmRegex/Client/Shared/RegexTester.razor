@@ -270,6 +270,13 @@
         if (!string.IsNullOrEmpty(pattern))
         {
             RegexText = pattern;
+            
+            // Auto-populate test data if Tests field is empty
+            if (string.IsNullOrWhiteSpace(Tests))
+            {
+                Tests = GetSampleDataForSample(SelectedSample);
+            }
+            
             // Force recompile next Test_Click by resetting prev config
             prevRegexConfig = null;
             await Test_Click(null);
@@ -288,6 +295,23 @@
                 return SampleRegexLibrary.PhonePattern;
             case "Url":
                 return SampleRegexLibrary.UrlPattern;
+            default:
+                return string.Empty;
+        }
+    }
+
+    private static string GetSampleDataForSample(string sample)
+    {
+        if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
+
+        switch (sample)
+        {
+            case "Email":
+                return SampleRegexLibrary.EmailSampleData;
+            case "Phone":
+                return SampleRegexLibrary.PhoneSampleData;
+            case "Url":
+                return SampleRegexLibrary.UrlSampleData;
             default:
                 return string.Empty;
         }
