@@ -239,6 +239,9 @@
         public int Length { get; set; }
     }
 
+    // Record for storing regex options in JSON format
+    public record RegexOptionsData(bool IgnoreCase, bool Multiline, bool Singleline);
+
     protected override async Task OnInitializedAsync()
     {
         RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
@@ -247,17 +250,30 @@
         var savedOptions = await LocalStorage.GetItemAsync<string>("REGEX_OPTIONS");
         if (!string.IsNullOrEmpty(savedOptions))
         {
-            // Format: "{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}"
-            var parts = savedOptions.Split('|');
-            if (parts.Length >= 4)
+            // Try to parse as JSON first (new format)
+            try
             {
-                // We do not override RegexText here; it is loaded separately above.
-                bool.TryParse(parts[^3], out var ignoreCase);
-                bool.TryParse(parts[^2], out var multiline);
-                bool.TryParse(parts[^1], out var singleline);
-                IgnoreCase = ignoreCase;
-                Multiline = multiline;
-                Singleline = singleline;
+                var options = JsonSerializer.Deserialize<RegexOptionsData>(savedOptions);
+                if (options != null)
+                {
+                    IgnoreCase = options.IgnoreCase;
+                    Multiline = options.Multiline;
+                    Singleline = options.Singleline;
+                }
+            }
+            catch (JsonException)
+            {
+                // Fallback for legacy pipe-delimited format: "{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}"
+                var parts = savedOptions.Split('|');
+                if (parts.Length >= 4)
+                {
+                    bool.TryParse(parts[^3], out var ignoreCase);
+                    bool.TryParse(parts[^2], out var multiline);
+                    bool.TryParse(parts[^1], out var singleline);
+                    IgnoreCase = ignoreCase;
+                    Multiline = multiline;
+                    Singleline = singleline;
+                }
             }
         }
     }
@@ -298,7 +314,8 @@
         if (string.IsNullOrEmpty(RegexText))
             return;
 
-        var currentConfig = $"{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}";
+        var currentOptionsData = new RegexOptionsData(IgnoreCase, Multiline, Singleline);
+        var currentConfig = $"{RegexText}|{JsonSerializer.Serialize(currentOptionsData)}";
         if (prevRegexConfig != currentConfig)
         {
             try
@@ -313,7 +330,7 @@
                 prevRegexConfig = currentConfig;
 
                 await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
-                await LocalStorage.SetItemAsync("REGEX_OPTIONS", currentConfig);
+                await LocalStorage.SetItemAsync("REGEX_OPTIONS", JsonSerializer.Serialize(currentOptionsData));
             }
             catch (RegexParseException regexParseEx)
             {
