@@ -176,7 +176,7 @@
         try
         {
             var tests = Tests?
-                .Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
+                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Distinct();
 
             var (elapsedMilliseconds, matches) = regexService.GetMatches(tests, testRegex);
