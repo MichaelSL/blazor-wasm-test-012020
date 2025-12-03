@@ -31,12 +31,12 @@ class Build : NukeBuild
 
     const string CounterPlaceholder = "<!-- Web Counter here -->";
 
-    [Parameter("Private docker registry URL (with protocol)")]
-    readonly string DockerPrivateRegistry;
-    [Parameter("Private Docker registry login")]
-    readonly string DockerLogin;
-    [Parameter("Private Docker registry password")]
-    readonly string DockerPassword;
+    [Parameter("GitHub Container Registry - defaults to ghcr.io")]
+    readonly string DockerRegistry = "ghcr.io";
+    [Parameter("GitHub username or organization (e.g., michaelsl)")]
+    readonly string GitHubOwner;
+    [Parameter("GitHub token for authentication")]
+    readonly string GitHubToken;
     [Parameter("Build number override")]
     readonly string BuildVersion
         = Environment.GetEnvironmentVariable("GITHUB_RUN_NUMBER") ?? null;
@@ -197,7 +197,8 @@ class Build : NukeBuild
     {
         get
         {
-            var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:{ArmTag}";
+            var owner = GitHubOwner?.ToLower() ?? GitRepository?.Identifier?.Split('/')[0]?.ToLower() ?? "unknown";
+            var name = $"{DockerRegistry}/{owner}/{ImageName}:{ArmTag}";
             if (GitRepository.Branch != "master")
             {
                 name += $"-{GitRepository.Branch.Replace('/', '-')}";
@@ -211,7 +212,8 @@ class Build : NukeBuild
     {
         get
         {
-            var name = $"{Regex.Replace(DockerPrivateRegistry, @"^https?\:\/\/", string.Empty)}/{ImageName}:x64";
+            var owner = GitHubOwner?.ToLower() ?? GitRepository?.Identifier?.Split('/')[0]?.ToLower() ?? "unknown";
+            var name = $"{DockerRegistry}/{owner}/{ImageName}:x64";
             if (GitRepository.Branch != "master")
             {
                 name += $"-{GitRepository.Branch.Replace('/','-')}";
@@ -222,7 +224,6 @@ class Build : NukeBuild
     }
 
     Target BuildArmDockerContainer => _ => _
-        .NotNull(DockerPrivateRegistry)
         .DependsOn(SetVersion, InsertCounterCode)
         .Executes(() =>
         {
@@ -236,7 +237,6 @@ class Build : NukeBuild
         });
 
     Target BuildDockerContainer => _ => _
-        .NotNull(DockerPrivateRegistry)
         .DependsOn(SetVersion, InsertCounterCode)
         .Executes(() =>
         {
@@ -250,15 +250,15 @@ class Build : NukeBuild
         });
 
     Target LoginToDockerRegistry => _ => _
-        .NotNull(DockerPrivateRegistry)
-        .NotNull(DockerPassword)
-        .NotNull(DockerLogin)
+        .NotNull(GitHubToken)
         .Executes(() =>
         {
+            var owner = GitHubOwner?.ToLower() ?? GitRepository?.Identifier?.Split('/')[0]?.ToLower() ?? "unknown";
+            Log.Information($"Logging into {DockerRegistry} as {owner}");
             DockerTasks.DockerLogin(c => c
-                .SetServer(DockerPrivateRegistry)
-                .SetUsername(DockerLogin)
-                .SetPassword(DockerPassword));
+                .SetServer(DockerRegistry)
+                .SetUsername(owner)
+                .SetPassword(GitHubToken));
         });
 
     Target PushArmDockerContainer => _ => _
