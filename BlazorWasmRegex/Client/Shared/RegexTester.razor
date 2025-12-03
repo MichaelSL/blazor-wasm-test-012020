@@ -1,9 +1,20 @@
 ﻿@using System.Text.RegularExpressions
 @using Blazored.LocalStorage
+@using BlazorWasmRegex.Shared.Services
+@using BlazorStrap
 @inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
 @inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
 @inject ILocalStorageService LocalStorage
 
+<p>
+    <label>Samples:</label>
+    <select class="form-select" @onchange="OnSampleChanged">
+        <option value="">-- Select a sample --</option>
+        <option value="Email">Email</option>
+        <option value="Phone">Phone</option>
+        <option value="Url">URL</option>
+    </select>
+</p>
 <p>
     <label>Regex:</label>
     <input class="form-control" @bind="RegexText" />
@@ -151,6 +162,7 @@
 
     protected string Tests { get; set; }
     protected string RegexText { get; set; }
+    protected string SelectedSample { get; set; }
     protected bool IgnoreCase { get; set; }
     protected bool Multiline { get; set; }
     protected bool Singleline { get; set; }
@@ -190,6 +202,7 @@
     {
         RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
         Tests = await LocalStorage.GetItemAsync<string>(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
+        SelectedSample = string.Empty;
         var savedOptions = await LocalStorage.GetItemAsync<string>("REGEX_OPTIONS");
         if (!string.IsNullOrEmpty(savedOptions))
         {
@@ -205,6 +218,37 @@
                 Multiline = multiline;
                 Singleline = singleline;
             }
+        }
+    }
+
+    private async Task OnSampleChanged(ChangeEventArgs e)
+    {
+        SelectedSample = e?.Value?.ToString() ?? string.Empty;
+
+        var pattern = GetPatternForSample(SelectedSample);
+        if (!string.IsNullOrEmpty(pattern))
+        {
+            RegexText = pattern;
+            // Force recompile next Test_Click by resetting prev config
+            prevRegexConfig = null;
+            await Test_Click(null);
+        }
+    }
+
+    private static string GetPatternForSample(string sample)
+    {
+        if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
+
+        switch (sample)
+        {
+            case "Email":
+                return SampleRegexLibrary.EmailPattern;
+            case "Phone":
+                return SampleRegexLibrary.PhonePattern;
+            case "Url":
+                return SampleRegexLibrary.UrlPattern;
+            default:
+                return string.Empty;
         }
     }
 
