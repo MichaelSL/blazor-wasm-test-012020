@@ -139,7 +139,9 @@
 
             var (elapsedMilliseconds, matches) = regexService.GetMatches(tests, testRegex);
 
-            NotEmptyMatches = matches;
+            NotEmptyMatches = matches
+                .Where(kvp => kvp.Value.Count > 0)
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             Message = $"{NotEmptyMatches.Count()} matches in {elapsedMilliseconds} ms";
 
             MatchedStrings = matches
