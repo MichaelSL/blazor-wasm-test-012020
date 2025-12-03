@@ -37,7 +37,7 @@ namespace BlazorWasmRegex.Shared.Services
         {
             return tests
                 .Select(item => testRegex.Split(item))
-                .Where(splitGroup => splitGroup.Length > 1 && splitGroup.Any(i => !string.IsNullOrEmpty(i)));
+                .Where(splitGroup => splitGroup.Any(i => !string.IsNullOrEmpty(i)));
         }
 
         public IDictionary<string, string> GetReplacedStrings(IEnumerable<string> tests, Regex testRegex, string replacement)
