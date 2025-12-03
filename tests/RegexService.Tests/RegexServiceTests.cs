@@ -77,5 +77,20 @@ namespace RegexService.Tests
             var result = _service.GetSplitList(tests, regex).ToArray();
             Assert.Empty(result);
         }
+
+        [Fact]
+        public void GetSplitList_IncludesSingleSegmentStringsWithoutDelimiter()
+        {
+            // A string without the delimiter should still be included in the result
+            // as it has non-empty content, even though it wasn't actually split
+            var tests = new[] { "nodelimiter", "a,b" };
+            var regex = new Regex(",", RegexOptions.Compiled);
+
+            var result = _service.GetSplitList(tests, regex).ToArray();
+
+            Assert.Equal(2, result.Length);
+            Assert.Equal(new[] { "nodelimiter" }, result[0]);
+            Assert.Equal(new[] { "a", "b" }, result[1]);
+        }
     }
 }
