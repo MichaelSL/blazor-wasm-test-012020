@@ -283,38 +283,23 @@
         }
     }
 
+    private static readonly Dictionary<string, (string Pattern, string SampleData)> SamplePatterns = new()
+    {
+        { "Email", (SampleRegexLibrary.EmailPattern, SampleRegexLibrary.EmailSampleData) },
+        { "Phone", (SampleRegexLibrary.PhonePattern, SampleRegexLibrary.PhoneSampleData) },
+        { "Url", (SampleRegexLibrary.UrlPattern, SampleRegexLibrary.UrlSampleData) }
+    };
+
     private static string GetPatternForSample(string sample)
     {
         if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
-
-        switch (sample)
-        {
-            case "Email":
-                return SampleRegexLibrary.EmailPattern;
-            case "Phone":
-                return SampleRegexLibrary.PhonePattern;
-            case "Url":
-                return SampleRegexLibrary.UrlPattern;
-            default:
-                return string.Empty;
-        }
+        return SamplePatterns.TryGetValue(sample, out var value) ? value.Pattern : string.Empty;
     }
 
     private static string GetSampleDataForSample(string sample)
     {
         if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
-
-        switch (sample)
-        {
-            case "Email":
-                return SampleRegexLibrary.EmailSampleData;
-            case "Phone":
-                return SampleRegexLibrary.PhoneSampleData;
-            case "Url":
-                return SampleRegexLibrary.UrlSampleData;
-            default:
-                return string.Empty;
-        }
+        return SamplePatterns.TryGetValue(sample, out var value) ? value.SampleData : string.Empty;
     }
 
     protected async Task Test_Click(object e)
