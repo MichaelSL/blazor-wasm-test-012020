@@ -72,12 +72,10 @@ namespace BlazorWasmRegex.Shared.Services
             }
             catch (NotSupportedException ex) when (data.NonBacktracking)
             {
-                // The pattern uses a construct the non-backtracking engine lacks (backreference,
-                // lookaround, atomic group, conditional, balancing group, \G).
-                var construct = DescribeUnsupportedConstruct(ex.Message);
-                return new RegexBuildResult(null, construct is null
-                    ? "NonBacktracking does not support this pattern (backreferences, lookarounds, atomic groups, conditionals, balancing groups and \\G are not allowed)."
-                    : $"NonBacktracking does not support this pattern: it contains {construct}.");
+                // The non-backtracking engine rejects patterns that use a construct it lacks
+                // (backreference, lookaround, atomic group, conditional, balancing group, \G) and
+                // patterns whose automaton would be too large (e.g. big nested repetition counts).
+                return new RegexBuildResult(null, DescribeNonBacktrackingFailure(ex.Message));
             }
             catch (ArgumentOutOfRangeException ex) when (ex.ParamName == "options")
             {
@@ -89,6 +87,31 @@ namespace BlazorWasmRegex.Shared.Services
                 return new RegexBuildResult(null, $"Failed to parse an expression: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Builds the user-facing message for a <see cref="NotSupportedException"/> thrown while constructing
+        /// a NonBacktracking regex. Handles both the full desktop message and the trimmed resource-key form
+        /// used in Blazor WASM.
+        /// </summary>
+        public static string DescribeNonBacktrackingFailure(string? message)
+        {
+            if (IsUnsafeSizeMessage(message))
+            {
+                return "NonBacktracking cannot handle this pattern: it is too large or complex (e.g. large nested repetition counts).";
+            }
+
+            var construct = DescribeUnsupportedConstruct(message);
+            return construct is null
+                ? "NonBacktracking does not support this pattern."
+                : $"NonBacktracking does not support this pattern: it contains {construct}.";
+        }
+
+        // Desktop: "... could result in an automata as large as '1000001' nodes, which is larger than the
+        // configured limit of '10000'."; WASM (trimmed resources): "NotSupported_NonBacktrackingUnsafeSize, ...".
+        private static bool IsUnsafeSizeMessage(string? message) =>
+            message is not null
+            && (message.Contains("NonBacktrackingUnsafeSize", StringComparison.Ordinal)
+                || message.Contains("automata as large as", StringComparison.Ordinal));
 
         /// <summary>
         /// Extracts the unsupported construct from a NonBacktracking <see cref="NotSupportedException"/>

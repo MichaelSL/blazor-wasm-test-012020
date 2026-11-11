@@ -133,6 +133,32 @@ namespace RegexService.Tests
             Assert.Equal(expected, RegexOptionsService.DescribeUnsupportedConstruct(message));
         }
 
+        [Theory]
+        [InlineData("(a{100}){100}")]
+        [InlineData("(a{1000}){1000}")]
+        public void TryCreateRegex_NonBacktrackingPatternTooLarge_ReportsSizeNotConstruct(string pattern)
+        {
+            var result = _service.TryCreateRegex(pattern, Opts(nonBacktracking: true), Timeout);
+
+            Assert.False(result.Success);
+            Assert.Equal("NonBacktracking cannot handle this pattern: it is too large or complex (e.g. large nested repetition counts).", result.Error);
+        }
+
+        [Theory]
+        [InlineData("The specified pattern with RegexOptions.NonBacktracking could result in an automata as large as '1000001' nodes, which is larger than the configured limit of '10000'.",
+            "NonBacktracking cannot handle this pattern: it is too large or complex (e.g. large nested repetition counts).")]
+        // Blazor WASM trims resource strings, so the message is only the resource key (plus arguments).
+        [InlineData("NotSupported_NonBacktrackingUnsafeSize, 1000001, 10000",
+            "NonBacktracking cannot handle this pattern: it is too large or complex (e.g. large nested repetition counts).")]
+        [InlineData("NotSupported_NonBacktrackingConflictingExpression, ExpressionDescription_Backreference",
+            "NonBacktracking does not support this pattern: it contains backreference.")]
+        [InlineData("something else", "NonBacktracking does not support this pattern.")]
+        [InlineData(null, "NonBacktracking does not support this pattern.")]
+        public void DescribeNonBacktrackingFailure_HandlesSizeConstructAndUnknownMessages(string? message, string expected)
+        {
+            Assert.Equal(expected, RegexOptionsService.DescribeNonBacktrackingFailure(message));
+        }
+
         [Fact]
         public void TryCreateRegex_NonBacktrackingSupportedPattern_Succeeds()
         {

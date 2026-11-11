@@ -385,6 +385,9 @@
             if (!result.Success)
             {
                 Console.WriteLine($"Failed to build a RegEx: {result.Error}");
+                // Drop the previous regex and its results so Replace, the result tabs and the
+                // exports never use a regex built from a different pattern or options.
+                ClearResults();
                 Message = result.ParseError is { } parseEx
                     ? $"Failed to parse an expression 😒: <b>{parseEx.Error}</b> at pos <b>{parseEx.Offset}</b>."
                     : $"😒 {System.Net.WebUtility.HtmlEncode(result.Error)}";
@@ -402,7 +405,8 @@
         {
             var tests = Tests?
                 .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct();
+                .Distinct()
+                .ToList();
 
             var (elapsedMilliseconds, matches) = regexService.GetMatches(tests, testRegex);
 
@@ -414,11 +418,15 @@
             // Only show inputs that have matches
             MatchedStrings = matches
                 .Where(mc => mc.Value.Count > 0)
-                .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"));
+                .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"))
+                .ToList();
 
-            // Only show inputs that have split results (where split actually occurred)
-            var splitResults = regexService.GetSplitList(tests, testRegex);
-            SplitList = splitResults.Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "));
+            // Only show inputs that have split results (where split actually occurred).
+            // Materialised here so Regex.Split runs inside this try block: a timeout during
+            // rendering would bypass the RegexMatchTimeoutException handler below.
+            SplitList = regexService.GetSplitList(tests, testRegex)
+                .Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "))
+                .ToList();
             
             // Extract capture group data
             CaptureGroupData = ExtractCaptureGroupData(matches);
@@ -428,13 +436,31 @@
         catch (RegexMatchTimeoutException timeoutEx)
         {
             Console.WriteLine($"RegEx timed out: {timeoutEx.Message}");
+            ClearResultCollections();
             Message = "⏱ Expression timed out - possible catastrophic backtracking";
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Something went wrong... {ex.Message}");
+            ClearResultCollections();
             Message = "Error evaluating expression ☠";
         }
+    }
+
+    private void ClearResults()
+    {
+        testRegex = null;
+        prevRegexConfig = null;
+        ClearResultCollections();
+    }
+
+    private void ClearResultCollections()
+    {
+        NotEmptyMatches = new Dictionary<string, MatchCollection>();
+        MatchedStrings = new List<string>();
+        SplitList = new List<string>();
+        CaptureGroupData = new List<TestCaptureGroupData>();
+        ReplacedStrings = new Dictionary<string, string>();
     }
 
     private List<TestCaptureGroupData> ExtractCaptureGroupData(IDictionary<string, MatchCollection> matches)
@@ -495,7 +521,16 @@
 
     protected async Task Replace_Click(object e)
     {
-        if (string.IsNullOrEmpty(RegexText) || string.IsNullOrEmpty(ReplacementPattern) || testRegex == null)
+        if (string.IsNullOrEmpty(RegexText) || string.IsNullOrEmpty(ReplacementPattern))
+            return;
+
+        // Rebuild first if the pattern or options changed since the last Test, so Replace never
+        // runs a regex built from different input. A failed build leaves testRegex null.
+        if (prevRegexConfig != (RegexText, CurrentOptions()))
+        {
+            await Test_Click(null);
+        }
+        if (testRegex == null)
             return;
 
         try

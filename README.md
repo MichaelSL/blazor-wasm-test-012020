@@ -35,11 +35,11 @@ The Blazor WASM Regex Tester provides comprehensive regex testing capabilities d
    - **Multiline**: `^` and `$` match line starts/ends
    - **Singleline**: `.` matches newline characters
    - Click **Advanced** for the less common options (hover a checkbox for a short explanation):
-     - **Any NewLine** (.NET 11): `^`, `$`, `\Z` and `.` treat `\r\n`, `\r`, `\n`, `\u0085`, `\u2028` and `\u2029` as line breaks, so `.+$` no longer captures a trailing `\r`
+     - **Any NewLine** (.NET 11): `^`, `$`, `\Z` and `.` treat `\r\n`, `\r`, `\n`, `\u0085`, `\u2028` and `\u2029` as line breaks. Each line of the Tests box is matched on its own and trimmed, so in the tester this mostly matters for `\u0085`, `\u2028` or `\u2029` inside a line
      - **NonBacktracking**: linear-time engine; no backreferences, lookarounds, atomic groups, conditionals, balancing groups or `\G`
      - **Explicit Capture**: only named/numbered groups capture
      - **Ignore Pattern Whitespace**: unescaped whitespace in the pattern is ignored and `#` starts a comment
-     - **Right To Left**: search from the end of the input
+     - **Right To Left**: search from the end of the input (highlighting stays in input order; the Table, Capture Groups and exports list matches right to left)
      - **Culture Invariant**: ignore cultural differences when ignoring case
      - **ECMAScript**: ECMAScript-compliant behaviour
    - Some combinations are rejected by .NET and show a message instead of results: ECMAScript only works with Ignore Case, Multiline and Culture Invariant; NonBacktracking can't be combined with Right To Left, ECMAScript or Any NewLine

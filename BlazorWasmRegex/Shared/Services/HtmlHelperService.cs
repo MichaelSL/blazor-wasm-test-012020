@@ -27,25 +27,25 @@ namespace BlazorWasmRegex.Shared.Services
             ReadOnlySpan<char> inputSpan = input.AsSpan();
             int lastIndex = 0;
 
-            foreach (Match match in matches)
+            // Walk matches in ascending Index order: with RegexOptions.RightToLeft the
+            // MatchCollection is in descending order, which would move lastIndex backwards
+            // and re-emit text.
+            foreach (Match match in matches.Where(m => m.Success).OrderBy(m => m.Index))
             {
-                if (match.Success)
+                // Add the text before the match (HTML encoded)
+                if (match.Index > lastIndex)
                 {
-                    // Add the text before the match (HTML encoded)
-                    if (match.Index > lastIndex)
-                    {
-                        var beforeMatch = inputSpan.Slice(lastIndex, match.Index - lastIndex);
-                        result.Append(WebUtility.HtmlEncode(beforeMatch.ToString()));
-                    }
-
-                    // Add the matched text wrapped in a span (content HTML encoded)
-                    result.Append($"<span class='{className}'>");
-                    var matchText = inputSpan.Slice(match.Index, match.Length);
-                    result.Append(WebUtility.HtmlEncode(matchText.ToString()));
-                    result.Append("</span>");
-
-                    lastIndex = match.Index + match.Length;
+                    var beforeMatch = inputSpan.Slice(lastIndex, match.Index - lastIndex);
+                    result.Append(WebUtility.HtmlEncode(beforeMatch.ToString()));
                 }
+
+                // Add the matched text wrapped in a span (content HTML encoded)
+                result.Append($"<span class='{className}'>");
+                var matchText = inputSpan.Slice(match.Index, match.Length);
+                result.Append(WebUtility.HtmlEncode(matchText.ToString()));
+                result.Append("</span>");
+
+                lastIndex = match.Index + match.Length;
             }
 
             // Add any remaining text after the last match (HTML encoded)
