@@ -129,6 +129,15 @@ a, .btn-link {
     font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
+/* Keep the build version (e.g. "v 2026.11.11.78+9fd54dc") on one line in the 250px sidebar. */
+.nav-version {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
 .page-title {
     font-size: 1.6rem;
     margin-bottom: 0.5rem;
