@@ -71,10 +71,10 @@ Two Dockerfiles for multi-arch support:
 ## Code Conventions
 
 ### Blazor Component Patterns
-1. **State Persistence**: Uses `Blazored.LocalStorage` to persist regex and test inputs between sessions
+1. **State Persistence**: Uses an in-repo `ILocalStorageService` (Blazored.LocalStorage-compatible format, JS interop to `localStorage`) to persist regex and test inputs between sessions
    - Keys: `REGEX_SESSION_STORAGE_KEY`, `TESTS_SESSION_STORAGE_KEY`
    
-2. **Regex Caching**: Compiles regex once and reuses (`prevRegexText` tracking prevents recompilation)
+2. **Regex Caching**: Compiles regex once and reuses (`prevRegexConfig`, a `(pattern, options)` tuple, prevents recompilation; it is reset when a build fails)
 
 3. **Error Handling**: Catches both `RegexParseException` (modern) and `ArgumentException` (fallback) for regex parsing
 
@@ -96,7 +96,6 @@ The app is a Progressive Web App with offline support:
 
 ### External Dependencies
 - **BlazorStrap** (v5.2.0): Bootstrap UI components
-- **Blazored.LocalStorage** (v4.5.0): Browser storage API
 
 ## Common Tasks
 

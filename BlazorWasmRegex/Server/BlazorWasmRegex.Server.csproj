@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <UserSecretsId>36eed1c7-e2af-42af-9df2-4808b371504b</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="11.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
   </ItemGroup>
 
@@ -20,6 +20,25 @@
   <ItemGroup>
     <Folder Include="Controllers\" />
   </ItemGroup>
+
+  <!--
+    Guard for the hosted-publish workaround (_CollectHtmlAssetsForHostedPublish in BlazorWasmRegex.Client.csproj),
+    which depends on SDK internals. If a future SDK renames them without fixing hosted publish, the workaround
+    silently stops applying and index.html ships with unreplaced placeholders, so the app cannot boot.
+    Fail the publish instead.
+  -->
+  <Target Name="_VerifyPublishedIndexHtml" AfterTargets="Publish">
+    <PropertyGroup>
+      <_PublishedIndexHtmlPath>$(PublishDir)wwwroot/index.html</_PublishedIndexHtmlPath>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_PublishedIndexHtmlPath)')"
+           Text="Published $(_PublishedIndexHtmlPath) is missing." />
+    <PropertyGroup>
+      <_PublishedIndexHtml>$([System.IO.File]::ReadAllText('$(_PublishedIndexHtmlPath)'))</_PublishedIndexHtml>
+    </PropertyGroup>
+    <Error Condition="$(_PublishedIndexHtml.Contains('#[.{fingerprint}]')) or $(_PublishedIndexHtml.Contains('&lt;script type=&quot;importmap&quot;&gt;&lt;/script&gt;'))"
+           Text="Published wwwroot/index.html still has unreplaced asset placeholders; the hosted-publish workaround in BlazorWasmRegex.Client.csproj no longer applies to this SDK." />
+  </Target>
 
 
 </Project>

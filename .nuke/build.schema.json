@@ -127,17 +127,17 @@
           "type": "string",
           "description": "Counter code: will replace <!-- Web Counter here -->"
         },
-        "DockerLogin": {
+        "DockerRegistry": {
           "type": "string",
-          "description": "Private Docker registry login"
+          "description": "GitHub Container Registry - defaults to ghcr.io"
         },
-        "DockerPassword": {
+        "GitHubOwner": {
           "type": "string",
-          "description": "Private Docker registry password"
+          "description": "GitHub username or organization (e.g., michaelsl)"
         },
-        "DockerPrivateRegistry": {
+        "GitHubToken": {
           "type": "string",
-          "description": "Private docker registry URL (with protocol)"
+          "description": "GitHub token for authentication"
         },
         "Solution": {
           "type": "string",

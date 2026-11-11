@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,14 +13,31 @@
   <ItemGroup>
     <PackageReference Include="BlazorStrap" Version="5.2.104" />
     <PackageReference Include="BlazorStrap.V5" Version="5.2.104" />
-    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\BlazorWasmRegex.Shared.csproj" />
   </ItemGroup>
+
+  <!--
+    Workaround for hosted publish (the Server project references this Client). The SDK collects the HTML
+    files for OverrideHtmlAssetPlaceholders only in the build-time target ResolveHtmlAssetPlaceholdersBuildConfiguration.
+    When the Server publishes, the Client's publish targets run in a separate project instance where that
+    target has not run, so @(_HtmlStaticWebAssets) is empty and wwwroot/index.html is published with its
+    placeholders unreplaced. In that instance the only index.html asset is the already-processed build copy,
+    so point the publish step back at the source wwwroot/index.html, keeping that asset's metadata.
+    A standalone Client publish already has @(_HtmlStaticWebAssets), so this target does nothing there.
+  -->
+  <Target Name="_CollectHtmlAssetsForHostedPublish"
+          BeforeTargets="GenerateHtmlAssetPlaceholdersPublishStaticWebAssets"
+          Condition="'$(OverrideHtmlAssetPlaceholders)' == 'true' and '@(_HtmlStaticWebAssets)' == ''">
+    <ItemGroup>
+      <_HostedPublishIndexHtml Include="@(StaticWebAsset)"
+        Condition="'%(AssetKind)' == 'Build' and '%(SourceType)' == 'Computed' and $([System.String]::Copy('%(RelativePath)').StartsWith('index#[.{fingerprint}]')) and '%(Extension)' == '.html'" />
+      <_HtmlStaticWebAssets Include="@(_HostedPublishIndexHtml->'$(MSBuildProjectDirectory)/wwwroot/index.html')" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
