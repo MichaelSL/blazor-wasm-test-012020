@@ -14,7 +14,7 @@ a, .btn-link {
     border-color: #1861ac;
 }
 
-app {
+.page {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -103,6 +103,47 @@ app {
 
 .navbar-toggler {
     background-color: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    margin-right: 1rem;
+}
+
+/* CSS-only mobile menu toggle (the nav menu is statically rendered). The checkbox stays focusable
+   for keyboard users but is visually hidden; its <label> is the visible button. */
+.nav-toggle {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.nav-menu {
+    display: none;
+}
+
+.nav-toggle:checked ~ .nav-menu {
+    display: block;
+}
+
+/* Bootstrap 5's utility; the bundled Bootstrap predates it. Used for pattern and test inputs. */
+.font-monospace {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.page-title {
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.cheat-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 1.5rem;
+}
+
+.cheat-sheet-section td:first-child {
+    white-space: nowrap;
+    width: 1%;
+    padding-right: 1rem;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -159,39 +200,6 @@ span.mark-yellow {
     transform: translate(-50%, -50%);
 }
 
-.loading-progress {
-    position: relative;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    margin: 20vh auto 1rem auto;
-}
-
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
-
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
-
-.loading-progress-text {
-    position: absolute;
-    text-align: center;
-    font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
-}
-
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
-    }
-
 @media (max-width: 767.98px) {
     .main .top-row:not(.auth) {
         display: none;
@@ -207,7 +215,7 @@ span.mark-yellow {
 }
 
 @media (min-width: 768px) {
-    app {
+    .page {
         flex-direction: row;
     }
 
@@ -232,7 +240,7 @@ span.mark-yellow {
         display: none;
     }
 
-    .sidebar .collapse {
+    .sidebar .nav-menu {
         /* Never collapse the sidebar for wide screens */
         display: block;
     }

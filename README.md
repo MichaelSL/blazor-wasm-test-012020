@@ -1,12 +1,12 @@
 # Blazor-WASM-Regex
 
-This is a demo WASM Blazor application. You can test regular C# expressions in your browser.
+A Blazor Web App for testing .NET (C#) regular expressions in your browser. The regex engine runs client-side in WebAssembly, so your patterns and test data never leave the browser.
 
 ## DEMO
 
 Now hosted: [dotnet-regex](https://dotnet-regex.com/)
 
-As all work is done in the browser the app is self-hosted on opi zero device with extremely low resources as an experiment.
+As all work is done in the browser the app is self-hosted on opi zero device with extremely low resources as an experiment. To keep the server's work minimal, the pages are rendered to static HTML when the Docker image is built, and the server only serves files. Only the regex tester itself is an interactive WebAssembly component.
 
 ## Application Usage
 
@@ -22,6 +22,8 @@ The Blazor WASM Regex Tester provides comprehensive regex testing capabilities d
 - **Export capabilities** (JSON, CSV, plain text formats)
 - **Local storage persistence** - your patterns and tests are saved between sessions
 - **Timeout protection** (2-second limit) prevents catastrophic backtracking
+- **Keyboard shortcut**: Ctrl+Enter (Cmd+Enter on macOS) runs the test
+- **.NET regex quick reference** below the tester: character classes, anchors, quantifiers, groups and lookarounds, inline options, substitutions and escapes
 
 ### Basic Usage
 
@@ -52,7 +54,7 @@ The Blazor WASM Regex Tester provides comprehensive regex testing capabilities d
      no numbers here
      ```
 
-4. **Click "Test"** to execute the regex
+4. **Click "Test"** (or press Ctrl+Enter) to execute the regex
    - Results appear in the message area showing match count and execution time
 
 #### 2. Using Sample Patterns

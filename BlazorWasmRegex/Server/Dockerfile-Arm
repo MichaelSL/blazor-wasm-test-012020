@@ -21,15 +21,16 @@ COPY . .
 ARG VERSION
 ARG SOURCE_REV
 WORKDIR "/src/BlazorWasmRegex/Server"
-# Stamp the published service worker with the commit so browsers pick up a new worker per deploy.
-# This edits the container's copy of the source only.
-RUN echo "// build: ${SOURCE_REV}" >> ../Client/wwwroot/service-worker.published.js
 RUN dotnet build "BlazorWasmRegex.Server.csproj" -c Release -o /app/build -p:Version=${VERSION} -p:SourceRevisionId=${SOURCE_REV}
 
 FROM build AS publish
 ARG VERSION
 ARG SOURCE_REV
 RUN dotnet publish "BlazorWasmRegex.Server.csproj" -c Release -o /app/publish -p:Version=${VERSION} -p:SourceRevisionId=${SOURCE_REV}
+# Render every page to static HTML here, on the build machine, so the production server only serves
+# files (see StaticPages.cs). Fails the build if any page can't be rendered.
+WORKDIR /app/publish
+RUN dotnet BlazorWasmRegex.Server.dll --PrerenderTo /app/publish/prerendered
 
 FROM base AS final
 WORKDIR /app

@@ -1,9 +1,8 @@
-using System;
+﻿using System;
 using System.Net.Http;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Text;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,9 +18,9 @@ namespace BlazorWasmRegex.Client
     {
         public static async Task Main(string[] args)
         {
+            // No root components: the server's pages mark where interactive components
+            // (RegexTester) go, and blazor.web.js starts them.
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            builder.RootComponents.Add<App>("app");
-            builder.RootComponents.Add<HeadOutlet>("head::after");
 
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             ConfigureServices(builder.Services);
@@ -29,6 +28,7 @@ namespace BlazorWasmRegex.Client
             await builder.Build().RunAsync();
         }
 
+        // Also called by the server, which needs the same services to prerender RegexTester.
         public static void ConfigureServices(IServiceCollection services)
         {
             services.AddBlazorStrap();

@@ -1,13 +1,35 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.StaticFiles;
+﻿using System.IO;
+using BlazorWasmRegex.Server;
+using BlazorWasmRegex.Server.Components;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+// Three modes:
+// - Static (production): a "prerendered" folder exists under the content root. Pages are served from
+//   those files and Razor components are never rendered, because the host is a tiny ARM board.
+// - Prerender (image build): `--PrerenderTo <dir>` renders every page once into <dir> and exits.
+// - Live (development, `dotnet run`): no prerendered folder, pages are rendered per request.
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+var prerenderTo = builder.Configuration["PrerenderTo"];
+var prerenderedDirectory = Path.Combine(builder.Environment.ContentRootPath, StaticPages.DirectoryName);
+var serveStatic = prerenderTo is null && Directory.Exists(prerenderedDirectory);
+
 builder.Services.AddRazorPages();
+if (!serveStatic)
+{
+    builder.Services.AddRazorComponents()
+        .AddInteractiveWebAssemblyComponents();
+    // RegexTester is prerendered on the server, so it needs the same services as in the browser.
+    BlazorWasmRegex.Client.Program.ConfigureServices(builder.Services);
+}
+if (prerenderTo is not null)
+{
+    // Any free local port; the prerenderer reads the actual address back.
+    builder.WebHost.UseUrls("http://127.0.0.1:0");
+}
 
 var app = builder.Build();
 
@@ -22,38 +44,37 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+if (!serveStatic)
+{
+    // Unknown paths render the not-found page with a 404 status.
+    app.UseStatusCodePagesWithReExecute(StaticPages.NotFoundRoute, createScopeForStatusCodePages: true);
+}
 
 app.UseHttpsRedirection();
 
-app.UseRouting();
-
-// Serves the client's wwwroot and _framework files from the build-time static web
-// assets manifest: precompressed (br/gzip) variants, ETags, and immutable caching
-// for fingerprinted files. Replaces UseBlazorFrameworkFiles() + UseStaticFiles().
+// Serves wwwroot and _framework files from the build-time static web assets manifest:
+// precompressed (br/gzip) variants, ETags, and immutable caching for fingerprinted files.
 app.MapStaticAssets();
 app.MapRazorPages();
 
-// index.html references fingerprinted framework files, so it must be revalidated on every
-// load rather than heuristically cached.
-static void NoCache(StaticFileResponseContext ctx) =>
-    ctx.Context.Response.Headers.CacheControl = "no-cache";
-
-// Known client-side routes (keep in sync with the @page directives in BlazorWasmRegex/Client/Pages)
-// get index.html with 200.
-foreach (var route in new[] { "/", "/about" })
+if (serveStatic)
 {
-    app.MapFallbackToFile(route, "index.html", new StaticFileOptions { OnPrepareResponse = NoCache });
+    StaticPages.Map(app, prerenderedDirectory);
+}
+else
+{
+    app.MapRazorComponents<App>()
+        .AddInteractiveWebAssemblyRenderMode()
+        .AddAdditionalAssemblies(typeof(BlazorWasmRegex.Client._Imports).Assembly);
 }
 
-// Any other path still gets index.html, so the Blazor router shows its "not found" page, but with
-// a 404 status, so search engines don't index unknown URLs as duplicates of the home page.
-app.MapFallbackToFile("index.html", new StaticFileOptions
+if (prerenderTo is not null)
 {
-    OnPrepareResponse = ctx =>
-    {
-        NoCache(ctx);
-        ctx.Context.Response.StatusCode = StatusCodes.Status404NotFound;
-    }
-});
+    await app.StartAsync();
+    var exitCode = await Prerenderer.RunAsync(app, prerenderTo);
+    await app.StopAsync();
+    return exitCode;
+}
 
 app.Run();
+return 0;

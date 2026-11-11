@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <BasePath />
+    <ResourcePreloader />
+    <meta name="theme-color" content="#03173d" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content=".NET Regex Tester" />
+    <meta property="og:image" content="@($"{PageMeta.SiteUrl}/icon-512.png")" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="stylesheet" href="@Assets["css/bootstrap/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["css/app.css"]" />
+    <link rel="manifest" href="@Assets["manifest.json"]" />
+    <link rel="apple-touch-icon" sizes="512x512" href="@Assets["icon-512.png"]" />
+    <ImportMap />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <script src="@Assets["js/app.js"]"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>
