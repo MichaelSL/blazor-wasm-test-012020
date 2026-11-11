@@ -106,7 +106,8 @@ class Build : NukeBuild
                 Log.Information($"Running tests: {proj.Name}");
                 DotNetTest(s => s
                     .SetProjectFile(proj)
-                    .SetConfiguration(Configuration));
+                    .SetConfiguration(Configuration)
+                    .EnableNoRestore());
             }
         });
 

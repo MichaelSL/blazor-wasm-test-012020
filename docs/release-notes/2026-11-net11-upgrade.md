@@ -12,7 +12,7 @@ The app runs the real .NET regex engine in the browser, so the runtime version *
 - **Regex correctness fixes in .NET 11:**
   - The `NonBacktracking` engine no longer takes super-linear time on certain nested-loop patterns, and returns correct results in cases that previously diverged from the backtracking engine.
   - The regex compiler and source generator handle `resumeAt` correctly when a conditional sits inside a loop body.
-- **New `RegexOptions.AnyNewLine`:** `^`, `$` and `.` treat all Unicode newlines (`\r\n`, `\n`, `\u0085`, ` `, ` `) as line terminators. It isn't in the UI yet; it would be a cheap addition next to the Multiline/Singleline checkboxes (see follow-ups).
+- **New `RegexOptions.AnyNewLine`:** `^`, `$` and `.` treat all Unicode newlines (`\r\n`, `\n`, `\u0085`, `\u2028`, `\u2029`) as line terminators. It isn't in the UI yet; it would be a cheap addition next to the Multiline/Singleline checkboxes (see follow-ups).
 
 ### For hosting and operations
 
