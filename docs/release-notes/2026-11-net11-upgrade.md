@@ -57,10 +57,25 @@ Release publish of `BlazorWasmRegex.Server`, `wwwroot/_framework`:
 - `dotnet test`: 5/5 pass on `net11.0`.
 - `./build.sh -Target Test`: Restore, Compile and Test all succeed.
 - `./build.sh -Target BuildDockerContainer`: x64 image builds; the container serves `/` and `_framework/blazor.webassembly.js` with HTTP 200.
+- Browser test (Chrome) against the dev server and the Release Docker container. All of these work on .NET 11:
+  - samples
+  - match highlighting
+  - Split list, Table and Capture Groups tabs, including named groups
+  - Replace with `$1` and `${name}`
+  - JSON/CSV/Text export
+  - Ignore Case
+  - invalid-pattern error message
+  - 2 s catastrophic-backtracking timeout (fired at ~2.0 s)
+  - local-storage restore after reload
+  - About page
+- The Release container shows no console errors. The `hot-reload-settings.json` 404 seen under `dotnet run` is a dev-only Hot Reload probe.
 - Not verified locally: the ARM image build and a run on the ARM device.
+
+## Fixed: result tabs
+
+The result tabs (Matches / Split list / Table / Capture Groups / Replace) never worked as tabs. `RegexTester.razor` used `BSTabGroup`, `BSTabList`, `BSTab`, `BSTabLabel`, `BSTabContent` and `BSTabSelectedContent`, which don't exist in BlazorStrap 5.2. Razor emitted them as unknown HTML elements (36 `RZ10012` warnings), so every panel rendered stacked with no tab strip. This predates .NET 11, and the browser test made it visible. The markup now uses the real BlazorStrap 5 API: `BSTabWrapper` > `BSNav IsTabs="true"` > `BSNavItem` with `TabLabel`/`TabContent`, plus `BSTabRender`, with Matches active by default. The build now has zero Razor warnings. (This was Task 1 in the removed `docs/regex-tester-improvements.md`.)
 
 ## Known issues and follow-ups
 
-- **BlazorStrap tab components don't resolve** (`RZ10012` for `BSTabGroup`, `BSTabList`, `BSTab`, `BSTabLabel`, `BSTabContent`, `BSTabSelectedContent` in `RegexTester.razor`). This predates the upgrade (same 36 warnings on .NET 10). Razor renders unresolved components as plain HTML elements, so the result tabs probably don't behave as tabs. Carried over from the removed `docs/regex-tester-improvements.md` (Task 1).
 - **Harmless NUKE warning:** an "Exception was suppressed … NuGet.Frameworks 7.11.0.0" message appears during NUKE runs. Nuke's bundled NuGet assemblies are older than the .NET 11 SDK's MSBuild; Nuke catches the exception and the build succeeds. It should go away when Nuke ships a .NET 11-aware release.
 - **Possible feature:** expose `RegexOptions.AnyNewLine` as an option checkbox.

@@ -61,33 +61,33 @@
     </div>
 </p>
 <p>
-    <BSTabGroup>
-        <BSTabList>
-            <BSTab>
-                <BSTabLabel>Matches</BSTabLabel>
-                <BSTabContent>
+    <BSTabWrapper>
+        <BSNav IsTabs="true">
+            <BSNavItem IsActive="true">
+                <TabLabel>Matches</TabLabel>
+                <TabContent>
                     <ul class="list-group">
                         @foreach (var m in MatchedStrings)
                         {
                             <li class="list-group-item">@((MarkupString)m)</li>
                         }
                     </ul>
-                </BSTabContent>
-            </BSTab>
-            <BSTab>
-                <BSTabLabel>Split list</BSTabLabel>
-                <BSTabContent>
+                </TabContent>
+            </BSNavItem>
+            <BSNavItem>
+                <TabLabel>Split list</TabLabel>
+                <TabContent>
                     <ul class="list-group">
                         @foreach (var m in SplitList)
                         {
                             <li class="list-group-item">@((MarkupString)m)</li>
                         }
                     </ul>
-                </BSTabContent>
-            </BSTab>
-            <BSTab>
-                <BSTabLabel>Table</BSTabLabel>
-                <BSTabContent>
+                </TabContent>
+            </BSNavItem>
+            <BSNavItem>
+                <TabLabel>Table</TabLabel>
+                <TabContent>
                     <ul class="list-group">
                         @foreach (var m in NotEmptyMatches)
                         {
@@ -112,11 +112,11 @@
                             }
                         }
                     </ul>
-                </BSTabContent>
-            </BSTab>
-            <BSTab>
-                <BSTabLabel>Capture Groups</BSTabLabel>
-                <BSTabContent>
+                </TabContent>
+            </BSNavItem>
+            <BSNavItem>
+                <TabLabel>Capture Groups</TabLabel>
+                <TabContent>
                     @if (CaptureGroupData.Any())
                     {
                         <ul class="list-group">
@@ -160,11 +160,11 @@
                             No capture groups found. Use named groups like <code>(?&lt;name&gt;pattern)</code> or numbered groups <code>(pattern)</code> to see capture details here.
                         </div>
                     }
-                </BSTabContent>
-            </BSTab>
-            <BSTab>
-                <BSTabLabel>Replace</BSTabLabel>
-                <BSTabContent>
+                </TabContent>
+            </BSNavItem>
+            <BSNavItem>
+                <TabLabel>Replace</TabLabel>
+                <TabContent>
                     @if (ReplacedStrings.Any())
                     {
                         <ul class="list-group">
@@ -187,11 +187,11 @@
                             Enter a replacement pattern and click the <strong>Replace</strong> button to see results.
                         </div>
                     }
-                </BSTabContent>
-            </BSTab>
-        </BSTabList>
-        <BSTabSelectedContent />
-    </BSTabGroup>
+                </TabContent>
+            </BSNavItem>
+        </BSNav>
+        <BSTabRender />
+    </BSTabWrapper>
 </p>
 
 @code {
