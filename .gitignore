@@ -339,3 +339,6 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 .vscode/*
+
+# Local deployment helper settings (not for the public repo)
+.env
