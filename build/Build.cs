@@ -231,6 +231,9 @@ class Build : NukeBuild
             DockerTasks.DockerBuild(c => c
                 .SetPath(Solution.Directory)
                 .SetFile(path / "Dockerfile-Arm")
+                // Without an explicit target platform, BuildKit labels the pushed image index
+                // with the runner's platform (amd64), and arm/v7 hosts can't pull it.
+                .SetPlatform("linux/arm/v7")
                 .SetTag(ArmFullImageName)
                 .EnableNoCache());
         });
