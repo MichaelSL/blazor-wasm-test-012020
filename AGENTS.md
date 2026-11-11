@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository.
 
 Blazor WebAssembly app for testing .NET regular expressions in the browser (hosted at https://dotnet-regex.com/). All regex work runs client-side in WASM; the ASP.NET Core server only hosts the static client.
 
-Target framework: **.NET 10** (`net10.0`) for all projects.
+Target framework: **.NET 11** (`net11.0`) for all projects.
 
 ## Layout
 
@@ -18,7 +18,7 @@ Target framework: **.NET 10** (`net10.0`) for all projects.
 - `BlazorWasmRegex/Server/` — ASP.NET Core host; `Dockerfile` (x64) and `Dockerfile-Arm`. Containers expose ports 8080/8081.
 - `tests/RegexService.Tests/` — xUnit tests for the Shared services.
 - `build/` — NUKE build project (`Build.cs`), invoked via `build.sh` / `build.ps1` / `build.cmd`.
-- `docs/` — design notes for past improvements.
+- `docs/release-notes/` — per-upgrade/release notes (what changed, why, how it was verified, known issues).
 
 ## Common commands
 
@@ -28,7 +28,7 @@ dotnet test tests/RegexService.Tests
 dotnet run --project BlazorWasmRegex/Server   # run app locally
 
 ./build.sh -Target Test       # NUKE: compile + run all *.Tests projects
-./build.sh -Target Publish    # publish server+client to artifacts/publish
+./build.sh -Target Publish    # publish server+client to .artifacts/publish
 ```
 
 Docker image targets (`BuildDockerContainer`, `BuildArmDockerContainer`, `Push*`) are used by CI (`.github/workflows/create-images.yml`) and push to ghcr.io.

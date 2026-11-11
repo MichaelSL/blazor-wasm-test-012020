@@ -1,11 +1,11 @@
 #See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute-chiseled-extra AS base
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 COPY ["BlazorWasmRegex/Server/BlazorWasmRegex.Server.csproj", "BlazorWasmRegex/Server/"]
 COPY ["BlazorWasmRegex/Client/BlazorWasmRegex.Client.csproj", "BlazorWasmRegex/Client/"]

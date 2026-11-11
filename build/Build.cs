@@ -11,7 +11,6 @@ using Nuke.Common.Tools.Docker;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Utilities.Collections;
 using Serilog;
-using static Nuke.Common.IO.FileSystemTasks;
 using static Nuke.Common.IO.PathConstruction;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
@@ -43,7 +42,7 @@ class Build : NukeBuild
     [Parameter("Counter code: will replace " + CounterPlaceholder)]
     readonly string CounterCode;
 
-    [Solution(SuppressBuildProjectCheck = true)] readonly Solution Solution;
+    [Solution] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
 
     AbsolutePath TestsDirectory => RootDirectory / "tests";
@@ -68,8 +67,8 @@ class Build : NukeBuild
         .Before(Restore)
         .Executes(() =>
         {
-            TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
-            EnsureCleanDirectory(ArtifactsDirectory);
+            TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(x => x.DeleteDirectory());
+            ArtifactsDirectory.CreateOrCleanDirectory();
         });
 
     Target Restore => _ => _
@@ -107,8 +106,7 @@ class Build : NukeBuild
                 Log.Information($"Running tests: {proj.Name}");
                 DotNetTest(s => s
                     .SetProjectFile(proj)
-                    .SetConfiguration(Configuration)
-                    .EnableNoBuild());
+                    .SetConfiguration(Configuration));
             }
         });
 
