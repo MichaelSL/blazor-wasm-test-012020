@@ -12,123 +12,93 @@ As all work is done in the browser the app is self-hosted on opi zero device wit
 
 ### Features
 
-The Blazor WASM Regex Tester provides comprehensive regex testing capabilities directly in your browser:
-
-- **Real-time regex testing** with C# regex engine (runs entirely client-side in WebAssembly)
-- **Regex options**: Ignore Case, Multiline and Singleline, plus an "Advanced" section with AnyNewLine (new in .NET 11), NonBacktracking, Explicit Capture, Ignore Pattern Whitespace, Right To Left, Culture Invariant and ECMAScript
-- **Sample patterns** for common use cases (Email, Phone, URL)
-- **Capture group visualization** for named and numbered groups
-- **Replace functionality** with capture group support
-- **Export capabilities** (JSON, CSV, plain text formats)
-- **Local storage persistence** - your patterns and tests are saved between sessions
-- **Timeout protection** (2-second limit) prevents catastrophic backtracking
+- **Live regex testing** with the real C# regex engine (runs entirely client-side in WebAssembly): results update as you type
+- **Two-pane workbench**: pattern, options, replacement and test strings on the left, results on the right (stacked on phones)
+- **Highlighting everywhere**: the pattern is syntax-colored, matches are highlighted inside the test strings, and each capture group has its own color in the pattern, the matches and the Groups view. Hover a match to highlight it in every view
+- **Per-line gutter** in the test editor: how many matches each line has
+- **Regex options**: Ignore Case, Multiline and Singleline, plus an "Advanced" section with AnyNewLine (new in .NET 11), NonBacktracking, Explicit Capture, Ignore Pattern Whitespace, Right To Left, Culture Invariant and ECMAScript. Options that cannot be combined are disabled with the reason
+- **Clear errors**: an invalid pattern is underlined at the failing character with the .NET parse error; a timeout (2-second limit against catastrophic backtracking) has its own amber state
+- **Sample patterns** with named groups (Email, Phone, URL)
+- **Replace** with `$1` / `${name}` substitutions, shown as a before/after diff
+- **Copy buttons** on match, group, split and replace values
+- **Export** matches as JSON, CSV or plain text
+- **Local storage persistence** - your pattern, tests, options and the Live setting are saved between sessions
 - **Keyboard shortcut**: Ctrl+Enter (Cmd+Enter on macOS) runs the test
-- **.NET regex quick reference** below the tester: character classes, anchors, quantifiers, groups and lookarounds, inline options, substitutions and escapes
+- **.NET regex quick reference** below the tester; click a token to insert it at the cursor
+- **Light and dark themes** (follows the system setting until you pick one)
 
 ### Basic Usage
 
 #### 1. Testing a Regex Pattern
 
-1. **Enter a regex pattern** in the "Regex:" field
+1. **Enter a regex pattern** in the "Regular expression" field
    - Example: `\d+` (matches one or more digits)
-   
-2. **Configure options** using checkboxes:
-   - **Ignore Case**: Makes pattern case-insensitive
+   - The active options are shown after the pattern, e.g. `/\d+/ i`
+
+2. **Configure options** with the chips under the pattern:
+   - **Ignore case**: Makes pattern case-insensitive
    - **Multiline**: `^` and `$` match line starts/ends
    - **Singleline**: `.` matches newline characters
-   - Click **Advanced** for the less common options (hover a checkbox for a short explanation):
-     - **Any NewLine** (.NET 11): `^`, `$`, `\Z` and `.` treat `\r\n`, `\r`, `\n`, `\u0085`, `\u2028` and `\u2029` as line breaks. Each line of the Tests box is matched on its own and trimmed, so in the tester this mostly matters for `\u0085`, `\u2028` or `\u2029` inside a line
+   - Click **Advanced** for the less common options (hover an option for a short explanation):
+     - **Any NewLine** (.NET 11): `^`, `$`, `\Z` and `.` treat `\r\n`, `\r`, `\n`, `\u0085`, `\u2028` and `\u2029` as line breaks. Each line of the test strings is matched on its own, so in the tester this mostly matters for `\u0085`, `\u2028` or `\u2029` inside a line
      - **NonBacktracking**: linear-time engine; no backreferences, lookarounds, atomic groups, conditionals, balancing groups or `\G`
-     - **Explicit Capture**: only named/numbered groups capture
-     - **Ignore Pattern Whitespace**: unescaped whitespace in the pattern is ignored and `#` starts a comment
-     - **Right To Left**: search from the end of the input (highlighting stays in input order; the Table, Capture Groups and exports list matches right to left)
-     - **Culture Invariant**: ignore cultural differences when ignoring case
+     - **Explicit capture**: only named/numbered groups capture
+     - **Ignore pattern whitespace**: unescaped whitespace in the pattern is ignored and `#` starts a comment
+     - **Right to left**: search from the end of the input (highlighting stays in input order; the Table, Groups and exports list matches right to left)
+     - **Culture invariant**: ignore cultural differences when ignoring case
      - **ECMAScript**: ECMAScript-compliant behaviour
-   - Some combinations are rejected by .NET and show a message instead of results: ECMAScript only works with Ignore Case, Multiline and Culture Invariant; NonBacktracking can't be combined with Right To Left, ECMAScript or Any NewLine
+   - Options that .NET cannot combine are disabled, with the reason: ECMAScript only works with Ignore case, Multiline and Culture invariant; NonBacktracking can't be combined with Right to left, ECMAScript or Any NewLine
 
-3. **Enter test strings** in the "Tests:" textarea (one per line)
-   - Example:
-     ```
-     test123
-     abc456def
-     no numbers here
-     ```
+3. **Enter test strings** in the "Test strings" editor, one per line. Each line is matched on its own (lines are no longer trimmed or de-duplicated):
+   ```
+   test123
+   abc456def
+   no numbers here
+   ```
 
-4. **Click "Test"** (or press Ctrl+Enter) to execute the regex
-   - Results appear in the message area showing match count and execution time
+4. With **Live** on (the default), results update as you type. Turn Live off to run only when you click **Test** or press Ctrl+Enter
+   - The status bar above the results shows the match count, how many lines matched, the number of capture groups and the time taken
 
 #### 2. Using Sample Patterns
 
-Select from the **Samples** dropdown to quickly load common patterns:
+Click **Email**, **Phone** or **URL** next to the pattern to load a sample. The test strings are replaced only when they are empty or still hold another sample's data.
 
-- **Email**: Validates email addresses
-  ```
-  Pattern: [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
-  Test: user@example.com, invalid.email, test@domain.co.uk
-  ```
+- **Email**: `(?<user>[\w.+-]+)@(?<domain>[\w-]+\.[\w.]+)`
+- **Phone**: `(?<country>\+\d{1,3})?[\s.-]?\(?(?<area>\d{3})\)?[\s.-]?(?<exchange>\d{3})[\s.-]?(?<line>\d{4})`
+- **URL**: `(?<scheme>https?)://(?<host>[\w.-]+)(?<path>/[^\s?#]*)?(?:\?(?<query>[^\s#]*))?`
 
-- **Phone**: Matches US phone numbers
-  ```
-  Pattern: \(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}
-  Test: (555) 123-4567, 555-123-4567, 5551234567
-  ```
-
-- **URL**: Validates web URLs
-  ```
-  Pattern: https?://[^\s]+
-  Test: https://example.com, http://test.org/path
-  ```
+On the first visit the Email sample is loaded so there is something to look at.
 
 #### 3. Viewing Results
 
-The application provides **five result tabs**:
+The result tabs show their counts, e.g. **Matches 3**:
 
-##### **Matches Tab**
-- Shows test strings with matched portions highlighted in yellow
-- Only displays strings that have matches
-
-##### **Split List Tab**
-- Shows how the regex splits each test string
-- Uses pin icons (📌) as delimiters between segments
-
-##### **Table Tab**
-- Detailed match information in tabular format
-- Shows:
-  - Test string
-  - Match index (position in string)
-  - Match length
-  - Match value
-
-##### **Capture Groups Tab**
-- Displays captured groups for patterns with parentheses
-- Shows both named groups: `(?<name>pattern)` and numbered groups: `(pattern)`
-- Example:
+- **Matches**: every test line with its matches highlighted (colored by capture group), and a matched / no match marker per line
+- **Split**: `Regex.Split` of each line, one chip per part. .NET includes captured groups in the result
+- **Table**: index, length and value of every match, per line
+- **Groups**: per line and match, every group with its number, name, value, index and length. Shows how to write `(?<name>...)` when the pattern has no groups. Example:
   ```
   Pattern: (?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})
   Test: 2025-12-02
-  
-  Results:
-  - Match 0 (Index: 0, Length: 10)
-    - 0: "2025-12-02" (Index: 0, Length: 10)
-    - year: "2025" (Index: 0, Length: 4)
-    - month: "12" (Index: 5, Length: 2)
-    - day: "02" (Index: 8, Length: 2)
-  ```
 
-##### **Replace Tab**
-- Shows original strings and their replaced versions side-by-side
-- Activated after using the Replace feature
+  Match 1  2025-12-02  index 0 · length 10
+    0 (match)  2025-12-02  0  10
+    year #1    2025        0   4
+    month #2   12          5   2
+    day #3     02          8   2
+  ```
+- **Replace**: the original line (matches struck through) and the replaced line (inserted text highlighted)
 
 #### 4. Replace Functionality
 
 Replace matched text using capture groups:
 
-1. **Enter replacement pattern** in "Replacement Pattern:" field
+1. **Enter a replacement pattern** in the "Replacement" field
    - Use `$1`, `$2`, etc. for numbered capture groups
    - Use `${name}` for named capture groups
    - Use literal text for static replacements
 
-2. **Click "Replace"** to apply replacements
+2. The **Replace** tab updates live; the **Replace** button runs the test and switches to that tab
 
 **Examples:**
 
@@ -158,7 +128,7 @@ Replace matched text using capture groups:
 
 #### 5. Exporting Results
 
-Export match results in three formats:
+Use the **Export** menu (enabled when there are matches) to download the matches in one of three formats. A test line that appears more than once is exported once in JSON:
 
 ##### **JSON Export**
 - Structured data with full match details

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using BlazorStrap;
 using BlazorWasmRegex.Shared.Interfaces;
 using BlazorWasmRegex.Shared.Services;
 using BlazorWasmRegex.Client.Services;
@@ -31,12 +30,10 @@ namespace BlazorWasmRegex.Client
         // Also called by the server, which needs the same services to prerender RegexTester.
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddBlazorStrap();
             services.AddScoped<IBrowserStorage, JsBrowserStorage>();
             services.AddScoped<ILocalStorageService, LocalStorageService>();
 
-            services.AddTransient<IRegexService, RegexService>();
-            services.AddTransient<IHtmlHelperService, HtmlHelperService>();
+            services.AddTransient<IRegexEvaluator, RegexEvaluator>();
             services.AddTransient<IRegexOptionsService, RegexOptionsService>();
         }
     }

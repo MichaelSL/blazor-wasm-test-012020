@@ -1,0 +1,16 @@
+<div class="empty-state">
+    <span class="empty-state__icon"><Icon Name="@IconName" /></span>
+    <p class="empty-state__title">@Title</p>
+    <p class="empty-state__body">@ChildContent</p>
+    @if (Code is not null)
+    {
+        <code class="empty-state__code">@Code</code>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string IconName { get; set; } = "";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Code { get; set; }
+}

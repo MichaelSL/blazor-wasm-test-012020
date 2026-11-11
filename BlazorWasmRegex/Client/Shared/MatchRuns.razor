@@ -1,0 +1,17 @@
+@using BlazorWasmRegex.Shared.Models
+@* The text of one match, colored by its innermost capture group. *@
+@foreach (var run in Runs)
+{
+    if (run.Slot == 0)
+    {
+        @run.Text
+    }
+    else
+    {
+        <span class="hl-g hl-g@(run.Slot)">@run.Text</span>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<HighlightRun> Runs { get; set; } = [];
+}

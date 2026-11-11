@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using BlazorWasmRegex.Shared.Interfaces;
@@ -50,6 +51,21 @@ namespace BlazorWasmRegex.Shared.Services
                 errors.Add("AnyNewLine cannot be combined with NonBacktracking.");
             }
             return errors;
+        }
+
+        public string? GetDisabledReason(string optionId, RegexOptionsData data)
+        {
+            ArgumentNullException.ThrowIfNull(data);
+            if (data.IsSet(optionId))
+            {
+                return null;
+            }
+
+            // Only report conflicts the new option introduces, not ones already present.
+            var before = Validate(data);
+            var after = Validate(data.With(optionId, true));
+            var added = after.Where(e => !before.Contains(e)).ToList();
+            return added.Count == 0 ? null : string.Join(" ", added);
         }
 
         public RegexBuildResult TryCreateRegex(string pattern, RegexOptionsData data, TimeSpan matchTimeout)

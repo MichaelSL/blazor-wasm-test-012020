@@ -1,0 +1,31 @@
+@using BlazorWasmRegex.Shared.Interfaces
+@using BlazorWasmRegex.Shared.Models
+<ol class="line-list">
+    @foreach (var line in Result.Lines)
+    {
+        var hit = line.Matches.Count > 0;
+        <li class="line-row @(hit ? "is-hit" : "is-miss")">
+            <span class="line-row__num">@line.Number</span>
+            <span class="line-row__icon">
+                <Icon Name="@(hit ? "check-circle" : "minus-circle")" Size="16" />
+                <span class="visually-hidden">@(hit ? "Matched" : "No match")</span>
+            </span>
+            <span class="line-row__text">
+                @if (line.IsEmpty)
+                {
+                    <span class="line-row__empty">empty line</span>
+                }
+                else
+                {
+                    <HighlightedLine Line="line" Spans="Evaluator.HighlightLine(line.Text, line.Matches)" />
+                }
+            </span>
+            <span class="line-row__meta">@(hit ? Fmt.Plural(line.Matches.Count, "match", "matches") : line.IsEmpty ? "" : "No match")</span>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired] public EvaluationResult Result { get; set; } = default!;
+    [Parameter, EditorRequired] public IRegexEvaluator Evaluator { get; set; } = default!;
+}

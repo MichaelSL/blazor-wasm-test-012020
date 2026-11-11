@@ -1,91 +1,124 @@
-@* Static .NET regex quick reference shown under the tester. *@
-<section class="cheat-sheet mt-5" aria-labelledby="cheat-sheet-title">
-    <h2 id="cheat-sheet-title" class="h4">.NET regex quick reference</h2>
-    <div class="cheat-sheet-grid">
+@* Static .NET regex quick reference shown under the tester. Clicking a token inserts it at the caret in
+   the pattern (or, for substitutions, the replacement) field: js/app.js handles [data-insert]. *@
+<section class="reference" aria-labelledby="refTitle">
+    <div class="reference__head">
+        <h2 class="reference__title" id="refTitle">.NET regex quick reference</h2>
+        <p class="reference__hint">Click a token to insert it at the cursor; substitutions go into the replacement field.</p>
+    </div>
+    <div class="reference__grid">
         @foreach (var section in Sections)
         {
-            <div class="cheat-sheet-section">
-                <h3 class="h6">@section.Title</h3>
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        @foreach (var (syntax, meaning) in section.Rows)
-                        {
-                            <tr>
-                                <td><code>@syntax</code></td>
-                                <td>@meaning</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+            <div class="ref-card">
+                <h3 class="ref-card__title">@section.Title</h3>
+                <ul class="ref-card__list">
+                    @foreach (var item in section.Items)
+                    {
+                        <li>
+                            <button type="button" class="ref-token" data-insert="@(item.Insert.Length > 0 ? item.Insert : item.Token)" data-target="@section.Target"
+                                    aria-label="@($"Insert {item.Token}: {item.Meaning}")">
+                                <span class="ref-token__code">@item.Token</span>
+                                <span class="ref-token__desc">@item.Meaning</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
             </div>
         }
     </div>
 </section>
 
 @code {
-    private sealed record Section(string Title, (string Syntax, string Meaning)[] Rows);
+    private sealed record Item(string Token, string Meaning, string Insert = "");
+
+    private sealed record Section(string Title, Item[] Items, string Target = "patternInput");
 
     private static readonly Section[] Sections =
     [
         new("Character classes",
         [
-            (".", "Any character except \\n (any character with Singleline)"),
-            ("\\d  \\D", "Digit / not a digit (any Unicode decimal digit unless ECMAScript)"),
-            ("\\w  \\W", "Word character / not a word character"),
-            ("\\s  \\S", "Whitespace / not whitespace"),
-            ("[abc]  [^abc]", "Any of a, b, c / anything except a, b, c"),
-            ("[a-z]", "Character range"),
-            ("[a-z-[aeiou]]", "Character class subtraction: consonants only"),
-            ("\\p{Lu}  \\P{Lu}", "Unicode category or named block (\\p{IsCyrillic}) / its negation"),
+            new(".", "Any character except \\n (any character with Singleline)"),
+            new("\\d", "Digit (any Unicode decimal digit unless ECMAScript)"),
+            new("\\D", "Not a digit"),
+            new("\\w", "Word character"),
+            new("\\W", "Not a word character"),
+            new("\\s", "Whitespace"),
+            new("\\S", "Not whitespace"),
+            new("[abc]", "Any of a, b, c"),
+            new("[^abc]", "Anything except a, b, c"),
+            new("[a-z]", "Character range"),
+            new("[a-z-[aeiou]]", "Class subtraction: consonants only"),
+            new("\\p{Lu}", "Unicode category or block, e.g. \\p{IsCyrillic}"),
         ]),
         new("Anchors",
         [
-            ("^  $", "Start / end of the input, or of each line with Multiline ($ also matches before a final \\n)"),
-            ("\\A  \\z", "Start / end of the input only"),
-            ("\\Z", "End of the input or before a final \\n"),
-            ("\\b  \\B", "Word boundary / not a word boundary"),
-            ("\\G", "Where the previous match ended"),
+            new("^", "Start of input, or of each line with Multiline"),
+            new("$", "End of input or line (also before a final \\n)"),
+            new("\\A", "Start of input only"),
+            new("\\z", "End of input only"),
+            new("\\Z", "End of input or before a final \\n"),
+            new("\\b", "Word boundary"),
+            new("\\B", "Not a word boundary"),
+            new("\\G", "Where the previous match ended"),
         ]),
         new("Quantifiers",
         [
-            ("*  +  ?", "0 or more / 1 or more / 0 or 1"),
-            ("{n}  {n,}  {n,m}", "Exactly n / at least n / between n and m"),
-            ("*?  +?  ??  {n,m}?", "Lazy versions: match as few as possible"),
+            new("*", "0 or more"),
+            new("+", "1 or more"),
+            new("?", "0 or 1"),
+            new("{3}", "Exactly 3"),
+            new("{2,}", "2 or more"),
+            new("{2,5}", "Between 2 and 5"),
+            new("*?", "0 or more, lazy (as few as possible)"),
+            new("+?", "1 or more, lazy"),
+            new("??", "0 or 1, lazy"),
         ]),
         new("Groups and lookarounds",
         [
-            ("(...)", "Numbered capturing group"),
-            ("(?<name>...)", "Named capturing group"),
-            ("(?:...)", "Non-capturing group"),
-            ("(?>...)", "Atomic group (no backtracking into it)"),
-            ("(?=...)  (?!...)", "Positive / negative lookahead"),
-            ("(?<=...)  (?<!...)", "Positive / negative lookbehind"),
-            ("\\1  \\k<name>", "Backreference to a numbered / named group"),
-            ("(?<open-close>...)", "Balancing group, for matching nested constructs"),
-            ("a|b", "Alternation: a or b"),
-            ("(?(name)yes|no)", "Conditional: yes if the group matched, else no"),
+            new("(...)", "Numbered capturing group", "()"),
+            new("(?<name>...)", "Named capturing group", "(?<name>)"),
+            new("(?:...)", "Non-capturing group", "(?:)"),
+            new("(?>...)", "Atomic group (no backtracking into it)", "(?>)"),
+            new("(?=...)", "Positive lookahead", "(?=)"),
+            new("(?!...)", "Negative lookahead", "(?!)"),
+            new("(?<=...)", "Positive lookbehind", "(?<=)"),
+            new("(?<!...)", "Negative lookbehind", "(?<!)"),
+            new("\\1", "Backreference to group 1"),
+            new("\\k<name>", "Backreference to a named group"),
+            new("(?<open-close>...)", "Balancing group, for nested constructs", "(?<open-close>)"),
+            new("a|b", "Alternation: a or b", "|"),
+            new("(?(name)yes|no)", "Conditional: yes if the group matched"),
         ]),
         new("Inline options",
         [
-            ("(?i)  (?m)  (?s)", "IgnoreCase / Multiline / Singleline from here on"),
-            ("(?n)  (?x)", "ExplicitCapture / IgnorePatternWhitespace"),
-            ("(?i:...)", "Option for this group only"),
-            ("(?-i)", "Turn an option off"),
+            new("(?i)", "IgnoreCase from here on"),
+            new("(?m)", "Multiline from here on"),
+            new("(?s)", "Singleline from here on"),
+            new("(?n)", "ExplicitCapture from here on"),
+            new("(?x)", "IgnorePatternWhitespace from here on"),
+            new("(?i:...)", "Option for this group only", "(?i:)"),
+            new("(?-i)", "Turn an option off"),
         ]),
         new("Substitutions (Replace)",
         [
-            ("$1  ${name}", "Text of a numbered / named group"),
-            ("$0  $&", "The whole match"),
-            ("$`  $'", "Input before / after the match"),
-            ("$+", "The last captured group"),
-            ("$_", "The entire input"),
-            ("$$", "A literal $"),
-        ]),
+            new("$1", "Text of group 1"),
+            new("${name}", "Text of a named group"),
+            new("$0", "The whole match"),
+            new("$&", "The whole match"),
+            new("$`", "Input before the match"),
+            new("$'", "Input after the match"),
+            new("$+", "The last captured group"),
+            new("$_", "The entire input"),
+            new("$$", "A literal $"),
+        ], "replaceInput"),
         new("Escapes",
         [
-            ("\\.  \\*  \\\\", "Literal ., *, \\ (escape any metacharacter)"),
-            ("\\t  \\n  \\r", "Tab / line feed / carriage return"),
-            ("\\x20  \\u0020", "Character by hex code"),
+            new("\\.", "Literal . (escape any metacharacter)"),
+            new("\\\\", "Literal backslash"),
+            new("\\t", "Tab"),
+            new("\\n", "Line feed"),
+            new("\\r", "Carriage return"),
+            new("\\x20", "Character by 2-digit hex code"),
+            new("\\u0020", "Character by 4-digit hex code"),
         ]),
     ];
 }

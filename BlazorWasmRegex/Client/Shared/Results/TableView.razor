@@ -1,0 +1,60 @@
+@using BlazorWasmRegex.Shared.Interfaces
+@using BlazorWasmRegex.Shared.Models
+@if (Result.TotalMatches == 0)
+{
+    <EmptyState IconName="table" Title="No matches to tabulate">None of the test lines match this pattern. Check the options or edit the pattern.</EmptyState>
+}
+else
+{
+    @foreach (var line in Result.Lines.Where(l => !l.IsEmpty))
+    {
+        <div class="test-block">
+            <LineHead Line="line">@Fmt.Plural(line.Matches.Count, "match", "matches")</LineHead>
+            @if (line.Matches.Count == 0)
+            {
+                <p class="empty-state__body">No matches on this line.</p>
+            }
+            else
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="num" scope="col">#</th>
+                            <th class="num" scope="col">Index</th>
+                            <th class="num" scope="col">Length</th>
+                            <th scope="col">Value</th>
+                            <th class="act"><span class="visually-hidden">Copy</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var k = 0; k < line.Matches.Count; k++)
+                        {
+                            var m = line.Matches[k];
+                            <tr data-m="@line.MatchId(k)">
+                                <td class="num">@(k + 1)</td>
+                                <td class="num">@m.Index</td>
+                                <td class="num">@m.Length</td>
+                                <td class="val">
+                                    @if (m.Length == 0)
+                                    {
+                                        <span class="val-unmatched">empty</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="hl-match"><MatchRuns Runs="Evaluator.HighlightMatch(m)" /></span>
+                                    }
+                                </td>
+                                <td class="act"><CopyButton Value="@m.Value" What="@($"match {k + 1}")" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public EvaluationResult Result { get; set; } = default!;
+    [Parameter, EditorRequired] public IRegexEvaluator Evaluator { get; set; } = default!;
+}

@@ -1,0 +1,98 @@
+@using BlazorWasmRegex.Shared.Models
+@if (GroupCount == 0)
+{
+    <EmptyState IconName="brackets" Title="This pattern has no capture groups"
+                Code="(?<name>...)   e.g.  (?<year>\d{4})-(?<month>\d{2})">
+        Wrap part of the pattern in parentheses to capture it. Named groups are easier to read and to use in replacements as <code>${name}</code>.
+    </EmptyState>
+}
+else if (Result.TotalMatches == 0)
+{
+    <EmptyState IconName="brackets" Title="No matches, so nothing was captured">Groups appear here once at least one test line matches.</EmptyState>
+}
+else
+{
+    @foreach (var line in Result.Lines.Where(l => l.Matches.Count > 0))
+    {
+        <div class="test-block">
+            <LineHead Line="line">@Fmt.Plural(line.Matches.Count, "match", "matches")</LineHead>
+            @for (var k = 0; k < line.Matches.Count; k++)
+            {
+                var m = line.Matches[k];
+                <div class="match-card" data-m="@line.MatchId(k)">
+                    <div class="match-card__head">
+                        <span class="match-card__title">Match @(k + 1)</span>
+                        <span class="match-card__value od-truncate">@m.Value</span>
+                        <span class="od-nowrap">index @m.Index · length @m.Length</span>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Group</th>
+                                <th scope="col">Value</th>
+                                <th class="num" scope="col">Index</th>
+                                <th class="num" scope="col">Length</th>
+                                <th class="act"><span class="visually-hidden">Copy</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in m.Groups)
+                            {
+                                <tr>
+                                    <td class="grp">
+                                        <span class="grp-name @(g.Number > 0 ? $"gc{g.Slot}" : null)">
+                                            <span class="grp-swatch sw@(g.Slot)"></span>
+                                            @if (g.Number == 0)
+                                            {
+                                                <text>0 <span class="val-unmatched">(match)</span></text>
+                                            }
+                                            else if (g.IsNamed)
+                                            {
+                                                <text>@g.Name <span class="val-unmatched">#@g.Number</span></text>
+                                            }
+                                            else
+                                            {
+                                                @g.Name
+                                            }
+                                        </span>
+                                    </td>
+                                    <td class="val">
+                                        @if (!g.Success)
+                                        {
+                                            <span class="val-unmatched">not captured</span>
+                                        }
+                                        else if (g.Length == 0)
+                                        {
+                                            <span class="val-unmatched">empty</span>
+                                        }
+                                        else
+                                        {
+                                            @g.Value
+                                        }
+                                    </td>
+                                    <td class="num">@(g.Success ? g.Index.ToString() : "–")</td>
+                                    <td class="num">@(g.Success ? g.Length.ToString() : "–")</td>
+                                    <td class="act">
+                                        @if (g.Success)
+                                        {
+                                            <CopyButton Value="@g.Value" What="@($"group {g.Name}")" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+    @if (Result.NonEmptyLines > Result.MatchedLines)
+    {
+        <p class="field__hint">@Fmt.Plural(Result.NonEmptyLines - Result.MatchedLines, "line", "lines") without matches hidden.</p>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public EvaluationResult Result { get; set; } = default!;
+    [Parameter, EditorRequired] public int GroupCount { get; set; }
+}

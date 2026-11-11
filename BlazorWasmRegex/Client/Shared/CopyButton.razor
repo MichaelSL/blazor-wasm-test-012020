@@ -1,0 +1,7 @@
+@* Copying is handled by app.js (click delegation on [data-copy]), so this also works without a round trip. *@
+<button type="button" class="copy-btn" data-copy="@Value" aria-label="Copy @What" title="Copy @What"><Icon Name="copy" Size="14" /></button>
+
+@code {
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter] public string What { get; set; } = "value";
+}

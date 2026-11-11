@@ -1,0 +1,30 @@
+@using BlazorWasmRegex.Shared.Models
+<div class="result-panel__toolbar"><span>Regex.Split per line. .NET includes captured groups in the result.</span></div>
+@foreach (var line in Result.Lines.Where(l => !l.IsEmpty))
+{
+    <div class="test-block">
+        <LineHead Line="line">@Fmt.Plural(line.Split.Count, "part", "parts")</LineHead>
+        <ol class="split-list">
+            @for (var k = 0; k < line.Split.Count; k++)
+            {
+                var part = line.Split[k];
+                <li class="split-part">
+                    <span class="split-part__idx">[@k]</span>
+                    @if (part.Length > 0)
+                    {
+                        <span class="split-part__val">@part</span>
+                    }
+                    else
+                    {
+                        <span class="split-part__val is-blank">empty</span>
+                    }
+                    <CopyButton Value="@part" What="@($"part {k}")" />
+                </li>
+            }
+        </ol>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public EvaluationResult Result { get; set; } = default!;
+}

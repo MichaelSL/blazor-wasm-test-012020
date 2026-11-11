@@ -1,0 +1,11 @@
+@using BlazorWasmRegex.Shared.Models
+<div class="test-block__head">
+    <span class="test-block__num">Line @Line.Number</span>
+    <span class="test-block__src od-truncate" title="@Line.Text">@Line.Text</span>
+    <span class="test-block__count">@ChildContent</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LineResult Line { get; set; } = default!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
