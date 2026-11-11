@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,25 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared\BlazorWasmRegex.Shared.csproj" />
   </ItemGroup>
+
+  <!--
+    Workaround for hosted publish (the Server project references this Client). The SDK collects the HTML
+    files for OverrideHtmlAssetPlaceholders only in the build-time target ResolveHtmlAssetPlaceholdersBuildConfiguration.
+    When the Server publishes, the Client's publish targets run in a separate project instance where that
+    target has not run, so @(_HtmlStaticWebAssets) is empty and wwwroot/index.html is published with its
+    placeholders unreplaced. In that instance the only index.html asset is the already-processed build copy,
+    so point the publish step back at the source wwwroot/index.html, keeping that asset's metadata.
+    A standalone Client publish already has @(_HtmlStaticWebAssets), so this target does nothing there.
+  -->
+  <Target Name="_CollectHtmlAssetsForHostedPublish"
+          BeforeTargets="GenerateHtmlAssetPlaceholdersPublishStaticWebAssets"
+          Condition="'$(OverrideHtmlAssetPlaceholders)' == 'true' and '@(_HtmlStaticWebAssets)' == ''">
+    <ItemGroup>
+      <_HostedPublishIndexHtml Include="@(StaticWebAsset)"
+        Condition="'%(AssetKind)' == 'Build' and '%(SourceType)' == 'Computed' and $([System.String]::Copy('%(RelativePath)').StartsWith('index#[.{fingerprint}]')) and '%(Extension)' == '.html'" />
+      <_HtmlStaticWebAssets Include="@(_HostedPublishIndexHtml->'$(MSBuildProjectDirectory)/wwwroot/index.html')" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />

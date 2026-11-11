@@ -1,19 +1,11 @@
 ﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-
-builder.Services.AddResponseCompression(opts =>
-{
-    opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-        new[] { "application/octet-stream" });
-});
 
 var app = builder.Build();
 
@@ -30,12 +22,20 @@ else
 }
 
 app.UseHttpsRedirection();
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
 
 app.UseRouting();
 
+// Serves the client's wwwroot and _framework files from the build-time static web
+// assets manifest: precompressed (br/gzip) variants, ETags, and immutable caching
+// for fingerprinted files. Replaces UseBlazorFrameworkFiles() + UseStaticFiles().
+app.MapStaticAssets();
 app.MapRazorPages();
-app.MapFallbackToFile("index.html");
+
+// Client-side routes (and "/") get index.html. It references fingerprinted framework files,
+// so it must be revalidated on every load rather than heuristically cached.
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache"
+});
 
 app.Run();

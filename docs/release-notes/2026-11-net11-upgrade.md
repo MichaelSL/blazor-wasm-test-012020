@@ -121,6 +121,42 @@ The result tabs (Matches / Split list / Table / Capture Groups / Replace) never 
     - New writes used the same escaped format.
     - With `window.localStorage` made to throw a `SecurityError`, the app loaded, matched normally and logged one "continuing without persistence" line.
 
+### Step 3: MapStaticAssets and client-side fingerprinting
+
+- **Server (`Server/Program.cs`):** `UseBlazorFrameworkFiles()` + `UseStaticFiles()` are replaced by `MapStaticAssets()`, and the `AddResponseCompression`/`UseResponseCompression` setup is removed. MapStaticAssets serves the build-time br/gzip files with ETags, so runtime compression isn't needed. Microsoft's docs say MapStaticAssets also replaces `UseBlazorFrameworkFiles`. The `.wasm`/`.dat`/`.js` content types come from the static web assets endpoint manifest.
+  - The only `UseBlazorFrameworkFiles` feature that is gone is the `Blazor-Environment` header. Since .NET 10 the WASM runtime ignores it and takes its environment from the build (`WasmApplicationEnvironmentName`: Development for build, Production for publish). The client never reads its environment.
+  - The Error page, HSTS and HTTPS redirection are unchanged.
+  - `MapFallbackToFile("index.html")` still serves `/` and deep links. It now sends `Cache-Control: no-cache`, because index.html refers to fingerprinted files and a heuristically cached copy could point at files that no longer exist after a deploy.
+- **Client fingerprinting:**
+  - The Client csproj sets `OverrideHtmlAssetPlaceholders=true`.
+  - `index.html` has `<link rel="preload" id="webassembly" />` and `<script type="importmap"></script>` in `<head>`, and loads `_framework/blazor.webassembly#[.{fingerprint}].js`.
+  - At build/publish the SDK fills in the import map (with SRI hashes) and a preload link for `dotnet.<hash>.js`.
+- **SDK workaround for hosted publish:** in a hosted publish (Server → Client), the .NET 11.0.100 SDK left the published `index.html` with its placeholders unreplaced: an empty importmap, a literal `#[.{fingerprint}]` in the script URL, and no `index.html` endpoint or .br/.gz files.
+  - Cause: the SDK collects HTML files (`_HtmlStaticWebAssets`) only in the build-time target `ResolveHtmlAssetPlaceholdersBuildConfiguration`. The Server runs the Client's publish targets in a separate project instance where that target never ran.
+  - A standalone `dotnet publish` of the Client works.
+  - Fix: a small `_CollectHtmlAssetsForHostedPublish` target in the Client csproj points the publish step back at `wwwroot/index.html`. It does nothing when the SDK has already collected the files.
+  - Remove the target once the SDK handles this case.
+- **Not fingerprinted after publish:** `blazor.webassembly.js` keeps its plain name in the published index.html. The SDK's publish step only rewrites files fingerprinted by file name, and in .NET 11 `blazor.webassembly.js` ships from the package with an endpoint-only fingerprint. The same happens in a standalone Client publish. It is served with `no-cache` + ETag (304 on revalidation). Everything it loads (`dotnet.*.js`, all `.wasm`, ICU `.dat`) is fingerprinted and immutable. In a Development build the script tag is fingerprinted (`blazor.webassembly.ldl9n57ejg.js`).
+- **NUKE targets:**
+  - `SetVersion` (Directory.Build.props + service-worker.published.js stamp) and `CleanUpSwVersion` work unchanged; the source files were restored after `Publish` and `BuildDockerContainer`.
+  - `InsertCounterCode` already did nothing: its placeholder `<!-- Web Counter here -->` is not in `index.html`, and git history shows it never was. This change doesn't affect it. The service-worker unregistration script in index.html is unchanged.
+- **Measured (Release publish, `dotnet BlazorWasmRegex.Server.dll` on http://127.0.0.1:5099):**
+  - `/`, `/about` and `/index.html` return 200 `text/html` with `Cache-Control: no-cache`. `/index.html` with `Accept-Encoding: br` is served br-encoded (941 B instead of 2,946 B).
+  - Fingerprinted framework files return `Cache-Control: max-age=31536000, immutable`, for example `dotnet.8blsku27ul.js` and `dotnet.native.mjledzavap.wasm`.
+  - Before this change every `_framework` file was `no-cache` and must revalidate on each load. CSS and favicon had no `Cache-Control` and no compression.
+  - `dotnet.native.*.wasm` is `application/wasm` with br at 1,003,700 B, gzip at 1,253,053 B and identity at 3,150,989 B.
+  - CSS (`css/app.css`) is now br-compressed.
+  - Unknown file paths (e.g. `/nonexistent.js`) still return 404.
+  - The 69 requests of a cold load of `/about` (captured in Chrome) total 10.77 MB identity, 4.21 MB gzip and 3.38 MB br. The pre-change build measured about 3.52 MB with br. Most of the saving comes from the CSS now being compressed. The bigger win is repeat visits: the framework files are now cached as immutable instead of revalidated.
+  - In Chrome the published app booted on the `/about` deep link with no console errors. Every `_framework` request used a fingerprinted URL except `blazor.webassembly.js`.
+- **Verified:**
+  - `dotnet build BlazorWasmRegex2.sln -c Release`: 0 warnings, 0 errors (baseline 0).
+  - `dotnet test tests/RegexService.Tests`: 40/40 pass.
+  - `dotnet run --project BlazorWasmRegex/Server` (Development profile): `/` and `/about` return 200, and the `_framework/blazor.webassembly.ldl9n57ejg.js` URL from the served index.html returns 200.
+  - `./build.sh -Target Publish` succeeds. The published index.html has a real importmap and a `dotnet.<hash>.js` preload.
+  - `./build.sh -Target BuildDockerContainer` succeeds. The container on 127.0.0.1:18093 served `/` and `/about` (200, `no-cache`), a filled importmap, the fingerprinted `dotnet.*.js` (200), and `.wasm` as `application/wasm`, br, immutable. The container was removed afterwards.
+  - `Dockerfile-Arm` was not built.
+
 ## Known issues and follow-ups
 
 - **Harmless NUKE warning:** an "Exception was suppressed … NuGet.Frameworks 7.11.0.0" message appears during NUKE runs. Nuke's bundled NuGet assemblies are older than the .NET 11 SDK's MSBuild; Nuke catches the exception and the build succeeds. It should go away when Nuke ships a .NET 11-aware release.
