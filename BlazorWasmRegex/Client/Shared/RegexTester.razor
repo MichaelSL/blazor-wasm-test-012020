@@ -3,8 +3,10 @@
 @using BlazorStrap
 @using Microsoft.JSInterop
 @using System.Text.Json
+@using BlazorWasmRegex.Shared.Models
 @inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
 @inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
+@inject BlazorWasmRegex.Shared.Interfaces.IRegexOptionsService regexOptionsService
 @inject BlazorWasmRegex.Shared.Interfaces.ILocalStorageService LocalStorage
 @inject IJSRuntime JS
 
@@ -23,18 +25,55 @@
 </p>
 <p>
     <label>Options:</label>
-    <div class="form-check form-check-inline">
+    <div class="form-check form-check-inline" title="Case-insensitive matching.">
         <input class="form-check-input" type="checkbox" @bind="IgnoreCase" id="ignoreCase">
         <label class="form-check-label" for="ignoreCase">Ignore Case</label>
     </div>
-    <div class="form-check form-check-inline">
+    <div class="form-check form-check-inline" title="^ and $ match at the start and end of each line, not just the whole input.">
         <input class="form-check-input" type="checkbox" @bind="Multiline" id="multiline">
         <label class="form-check-label" for="multiline">Multiline</label>
     </div>
-    <div class="form-check form-check-inline">
+    <div class="form-check form-check-inline" title="The dot (.) also matches \n.">
         <input class="form-check-input" type="checkbox" @bind="Singleline" id="singleline">
         <label class="form-check-label" for="singleline">Singleline</label>
     </div>
+    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="() => ShowAdvancedOptions = !ShowAdvancedOptions"
+            aria-expanded="@(ShowAdvancedOptions ? "true" : "false")" aria-controls="advancedOptions">
+        @(ShowAdvancedOptions ? "Hide advanced" : "Advanced")@(AdvancedOptionsCount > 0 ? $" ({AdvancedOptionsCount} on)" : "")
+    </button>
+    @if (ShowAdvancedOptions)
+    {
+        <div id="advancedOptions" class="mt-1">
+            <div class="form-check form-check-inline" title="(.NET 11) ^, $, \Z and . treat \r\n, \r, \n, \u0085, \u2028 and \u2029 as line breaks, not only \n. Not compatible with NonBacktracking or ECMAScript.">
+                <input class="form-check-input" type="checkbox" @bind="AnyNewLine" id="anyNewLine">
+                <label class="form-check-label" for="anyNewLine">Any NewLine</label>
+            </div>
+            <div class="form-check form-check-inline" title="Linear-time engine without backtracking. Does not support backreferences, lookarounds, atomic groups, conditionals, balancing groups or \G; not compatible with RightToLeft, ECMAScript or AnyNewLine.">
+                <input class="form-check-input" type="checkbox" @bind="NonBacktracking" id="nonBacktracking">
+                <label class="form-check-label" for="nonBacktracking">NonBacktracking</label>
+            </div>
+            <div class="form-check form-check-inline" title="Only named or numbered groups like (?&lt;name&gt;...) capture; plain (...) groups do not.">
+                <input class="form-check-input" type="checkbox" @bind="ExplicitCapture" id="explicitCapture">
+                <label class="form-check-label" for="explicitCapture">Explicit Capture</label>
+            </div>
+            <div class="form-check form-check-inline" title="Ignore unescaped whitespace in the pattern and allow # comments.">
+                <input class="form-check-input" type="checkbox" @bind="IgnorePatternWhitespace" id="ignorePatternWhitespace">
+                <label class="form-check-label" for="ignorePatternWhitespace">Ignore Pattern Whitespace</label>
+            </div>
+            <div class="form-check form-check-inline" title="Search from right to left. Not compatible with NonBacktracking.">
+                <input class="form-check-input" type="checkbox" @bind="RightToLeft" id="rightToLeft">
+                <label class="form-check-label" for="rightToLeft">Right To Left</label>
+            </div>
+            <div class="form-check form-check-inline" title="Ignore cultural differences in language when ignoring case.">
+                <input class="form-check-input" type="checkbox" @bind="CultureInvariant" id="cultureInvariant">
+                <label class="form-check-label" for="cultureInvariant">Culture Invariant</label>
+            </div>
+            <div class="form-check form-check-inline" title="ECMAScript-compliant behaviour. Can only be combined with Ignore Case, Multiline and Culture Invariant.">
+                <input class="form-check-input" type="checkbox" @bind="ECMAScript" id="ecmaScript">
+                <label class="form-check-label" for="ecmaScript">ECMAScript</label>
+            </div>
+        </div>
+    }
 </p>
 <p>
     <label>Replacement Pattern:</label>
@@ -205,6 +244,17 @@
     protected bool IgnoreCase { get; set; }
     protected bool Multiline { get; set; }
     protected bool Singleline { get; set; }
+    protected bool AnyNewLine { get; set; }
+    protected bool NonBacktracking { get; set; }
+    protected bool ExplicitCapture { get; set; }
+    protected bool IgnorePatternWhitespace { get; set; }
+    protected bool RightToLeft { get; set; }
+    protected bool CultureInvariant { get; set; }
+    protected bool ECMAScript { get; set; }
+    protected bool ShowAdvancedOptions { get; set; }
+    protected int AdvancedOptionsCount =>
+        new[] { AnyNewLine, NonBacktracking, ExplicitCapture, IgnorePatternWhitespace, RightToLeft, CultureInvariant, ECMAScript }
+            .Count(b => b);
     protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
     protected IEnumerable<string> SplitList { get; set; } = new List<string>();
     protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
@@ -213,7 +263,8 @@
     protected string Message { get; set; }
 
     private Regex testRegex;
-    private (string RegexText, bool IgnoreCase, bool Multiline, bool Singleline)? prevRegexConfig;
+    // RegexOptionsData is a record, so the tuple compares every option by value.
+    private (string RegexText, RegexOptionsData Options)? prevRegexConfig;
 
     // Data structures for capture groups display
     public class TestCaptureGroupData
@@ -238,44 +289,42 @@
         public int Length { get; set; }
     }
 
-    // Record for storing regex options in JSON format
-    public record RegexOptionsData(bool IgnoreCase, bool Multiline, bool Singleline);
-
     protected override async Task OnInitializedAsync()
     {
         RegexText = await LocalStorage.GetStringAsync(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
         Tests = await LocalStorage.GetStringAsync(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
         SelectedSample = string.Empty;
-        var savedOptions = await LocalStorage.GetStringAsync("REGEX_OPTIONS");
-        if (!string.IsNullOrEmpty(savedOptions))
+        var options = regexOptionsService.Deserialize(await LocalStorage.GetStringAsync("REGEX_OPTIONS"));
+        if (options != null)
         {
-            // Try to parse as JSON first (new format)
-            try
-            {
-                var options = JsonSerializer.Deserialize<RegexOptionsData>(savedOptions);
-                if (options != null)
-                {
-                    IgnoreCase = options.IgnoreCase;
-                    Multiline = options.Multiline;
-                    Singleline = options.Singleline;
-                }
-            }
-            catch (JsonException)
-            {
-                // Fallback for legacy pipe-delimited format: "{RegexText}|{IgnoreCase}|{Multiline}|{Singleline}"
-                // Note: RegexText is loaded separately; we only parse the options (last 3 values) here.
-                var parts = savedOptions.Split('|');
-                if (parts.Length >= 4)
-                {
-                    bool.TryParse(parts[^3], out var ignoreCase);
-                    bool.TryParse(parts[^2], out var multiline);
-                    bool.TryParse(parts[^1], out var singleline);
-                    IgnoreCase = ignoreCase;
-                    Multiline = multiline;
-                    Singleline = singleline;
-                }
-            }
+            ApplyOptions(options);
         }
+        // Don't hide active advanced options behind a collapsed section.
+        ShowAdvancedOptions = AdvancedOptionsCount > 0;
+    }
+
+    private RegexOptionsData CurrentOptions() => new(
+        IgnoreCase, Multiline, Singleline,
+        AnyNewLine: AnyNewLine,
+        NonBacktracking: NonBacktracking,
+        ExplicitCapture: ExplicitCapture,
+        IgnorePatternWhitespace: IgnorePatternWhitespace,
+        RightToLeft: RightToLeft,
+        CultureInvariant: CultureInvariant,
+        ECMAScript: ECMAScript);
+
+    private void ApplyOptions(RegexOptionsData options)
+    {
+        IgnoreCase = options.IgnoreCase;
+        Multiline = options.Multiline;
+        Singleline = options.Singleline;
+        AnyNewLine = options.AnyNewLine;
+        NonBacktracking = options.NonBacktracking;
+        ExplicitCapture = options.ExplicitCapture;
+        IgnorePatternWhitespace = options.IgnorePatternWhitespace;
+        RightToLeft = options.RightToLeft;
+        CultureInvariant = options.CultureInvariant;
+        ECMAScript = options.ECMAScript;
     }
 
     private async Task OnSampleChanged(ChangeEventArgs e)
@@ -323,41 +372,31 @@
         if (string.IsNullOrEmpty(RegexText))
             return;
 
-        var currentOptionsData = new RegexOptionsData(IgnoreCase, Multiline, Singleline);
-        var currentOptionsJson = JsonSerializer.Serialize(currentOptionsData);
+        var currentOptions = CurrentOptions();
         // Use a tuple-based comparison for change detection to avoid delimiter issues
-        var currentConfig = (RegexText, IgnoreCase, Multiline, Singleline);
+        var currentConfig = (RegexText, currentOptions);
         if (prevRegexConfig != currentConfig)
         {
-            try
+            Console.WriteLine("Changing RegEx");
+            // TryCreateRegex validates option combinations and converts parse errors, invalid
+            // combinations and NotSupportedException (NonBacktracking + unsupported constructs)
+            // into an error result. Every regex keeps the 2 s match timeout.
+            var result = regexOptionsService.TryCreateRegex(RegexText, currentOptions, RegexTimeout);
+            if (!result.Success)
             {
-                Console.WriteLine("Changing RegEx");
-                // RegexOptions.Compiled is intentionally omitted: WASM only has the regex interpreter.
-                var options = RegexOptions.None;
-                if (IgnoreCase) options |= RegexOptions.IgnoreCase;
-                if (Multiline) options |= RegexOptions.Multiline;
-                if (Singleline) options |= RegexOptions.Singleline;
-                
-                testRegex = new Regex(RegexText, options, RegexTimeout);
-                prevRegexConfig = (RegexText, IgnoreCase, Multiline, Singleline);
+                Console.WriteLine($"Failed to build a RegEx: {result.Error}");
+                Message = result.ParseError is { } parseEx
+                    ? $"Failed to parse an expression 😒: <b>{parseEx.Error}</b> at pos <b>{parseEx.Offset}</b>."
+                    : $"😒 {System.Net.WebUtility.HtmlEncode(result.Error)}";
+                return;
+            }
 
-                await LocalStorage.SetStringAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
-                await LocalStorage.SetStringAsync("REGEX_OPTIONS", currentOptionsJson);
-            }
-            catch (RegexParseException regexParseEx)
-            {
-                Console.WriteLine($"Failed to parse a RegEx: {regexParseEx.Message}; {regexParseEx.Error}; {regexParseEx.Offset}");
-                Message = $"Failed to parse an expression 😒: <b>{regexParseEx.Error}</b> at pos <b>{regexParseEx.Offset}</b>.";
-                return;
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"Failed to parse a RegEx: <b>{ex.Message}</b>; {ex.GetType().Name}");
-                Message = "Failed to parse an expression 😒";
-                return;
-            }
+            testRegex = result.Regex;
+            prevRegexConfig = currentConfig;
+
+            await LocalStorage.SetStringAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
+            await LocalStorage.SetStringAsync("REGEX_OPTIONS", regexOptionsService.Serialize(currentOptions));
         }
-
 
         try
         {

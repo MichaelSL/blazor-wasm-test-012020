@@ -15,7 +15,7 @@ As all work is done in the browser the app is self-hosted on opi zero device wit
 The Blazor WASM Regex Tester provides comprehensive regex testing capabilities directly in your browser:
 
 - **Real-time regex testing** with C# regex engine (runs entirely client-side in WebAssembly)
-- **Multiple regex options** (IgnoreCase, Multiline, Singleline)
+- **Regex options**: Ignore Case, Multiline and Singleline, plus an "Advanced" section with AnyNewLine (new in .NET 11), NonBacktracking, Explicit Capture, Ignore Pattern Whitespace, Right To Left, Culture Invariant and ECMAScript
 - **Sample patterns** for common use cases (Email, Phone, URL)
 - **Capture group visualization** for named and numbered groups
 - **Replace functionality** with capture group support
@@ -34,6 +34,15 @@ The Blazor WASM Regex Tester provides comprehensive regex testing capabilities d
    - **Ignore Case**: Makes pattern case-insensitive
    - **Multiline**: `^` and `$` match line starts/ends
    - **Singleline**: `.` matches newline characters
+   - Click **Advanced** for the less common options (hover a checkbox for a short explanation):
+     - **Any NewLine** (.NET 11): `^`, `$`, `\Z` and `.` treat `\r\n`, `\r`, `\n`, `\u0085`, `\u2028` and `\u2029` as line breaks, so `.+$` no longer captures a trailing `\r`
+     - **NonBacktracking**: linear-time engine; no backreferences, lookarounds, atomic groups, conditionals, balancing groups or `\G`
+     - **Explicit Capture**: only named/numbered groups capture
+     - **Ignore Pattern Whitespace**: unescaped whitespace in the pattern is ignored and `#` starts a comment
+     - **Right To Left**: search from the end of the input
+     - **Culture Invariant**: ignore cultural differences when ignoring case
+     - **ECMAScript**: ECMAScript-compliant behaviour
+   - Some combinations are rejected by .NET and show a message instead of results: ECMAScript only works with Ignore Case, Multiline and Culture Invariant; NonBacktracking can't be combined with Right To Left, ECMAScript or Any NewLine
 
 3. **Enter test strings** in the "Tests:" textarea (one per line)
    - Example:

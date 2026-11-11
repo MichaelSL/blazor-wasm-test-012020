@@ -35,6 +35,7 @@ namespace BlazorWasmRegex.Client
 
             services.AddTransient<IRegexService, RegexService>();
             services.AddTransient<IHtmlHelperService, HtmlHelperService>();
+            services.AddTransient<IRegexOptionsService, RegexOptionsService>();
         }
     }
 }

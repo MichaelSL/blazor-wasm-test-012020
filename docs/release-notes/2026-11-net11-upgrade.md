@@ -12,7 +12,7 @@ The app runs the real .NET regex engine in the browser, so the runtime version *
 - **Regex correctness fixes in .NET 11:**
   - The `NonBacktracking` engine no longer takes super-linear time on certain nested-loop patterns, and returns correct results in cases that previously diverged from the backtracking engine.
   - The regex compiler and source generator handle `resumeAt` correctly when a conditional sits inside a loop body.
-- **New `RegexOptions.AnyNewLine`:** `^`, `$` and `.` treat all Unicode newlines (`\r\n`, `\n`, `\u0085`, `\u2028`, `\u2029`) as line terminators. It isn't in the UI yet; it would be a cheap addition next to the Multiline/Singleline checkboxes (see follow-ups).
+- **New `RegexOptions.AnyNewLine`:** `^`, `$` and `.` treat all Unicode newlines (`\r\n`, `\n`, `\u0085`, `\u2028`, `\u2029`) as line terminators. It is exposed in the UI as the "Any NewLine" option (see Step 4).
 
 ### For hosting and operations
 
@@ -157,7 +157,27 @@ The result tabs (Matches / Split list / Table / Capture Groups / Replace) never 
   - `./build.sh -Target BuildDockerContainer` succeeds. The container on 127.0.0.1:18093 served `/` and `/about` (200, `no-cache`), a filled importmap, the fingerprinted `dotnet.*.js` (200), and `.wasm` as `application/wasm`, br, immutable. The container was removed afterwards.
   - `Dockerfile-Arm` was not built.
 
+### Step 4: more RegexOptions in the UI
+
+- **UI (`RegexTester.razor`):** an "Advanced" toggle under Ignore Case / Multiline / Singleline shows a second row of checkboxes: Any NewLine, NonBacktracking, Explicit Capture, Ignore Pattern Whitespace, Right To Left, Culture Invariant and ECMAScript. Each option has a short `title` tooltip. The toggle shows how many advanced options are on, and the section opens on load when any of them is saved as on, so active options are never hidden.
+- **New Shared service `IRegexOptionsService` / `RegexOptionsService`** (registered in `Client/Program.cs`), with `RegexOptionsData` moved to `Shared/Models`:
+  - `ToRegexOptions` maps the flags (still never adds `Compiled`).
+  - `Validate` returns friendly messages for combinations the engine rejects.
+  - `TryCreateRegex` validates, then constructs the regex with the caller's timeout (the component still passes its 2 s `RegexTimeout`). It turns `RegexParseException`, `NotSupportedException` (NonBacktracking with an unsupported construct) and `ArgumentException` into an error result. Before this, `NotSupportedException` was not caught by the component, because it is not an `ArgumentException`.
+  - `Serialize` / `Deserialize` handle the `REGEX_OPTIONS` storage formats.
+- **Option rules, checked empirically on .NET 11.0.100** (scratch console app, now encoded as tests that compare `Validate` with the real `Regex` constructor) and matching the "Regular expression options" docs:
+  - ECMAScript only combines with IgnoreCase, Multiline and CultureInvariant. CultureInvariant is accepted even though older docs list only IgnoreCase and Multiline.
+  - NonBacktracking can't be combined with RightToLeft or ECMAScript.
+  - AnyNewLine can't be combined with NonBacktracking or ECMAScript (with or without Multiline). It does combine with RightToLeft, Singleline, Multiline, ExplicitCapture, IgnorePatternWhitespace, CultureInvariant and IgnoreCase.
+  - All of these throw `ArgumentOutOfRangeException` (param `options`). NonBacktracking with backreferences, lookarounds, atomic groups, conditionals or `\G` throws `NotSupportedException` at construction.
+  - With Multiline, `^.+$` over `a\u2028b\r\nc` gives `a\u2028b\r`, `c` without AnyNewLine and `a`, `b`, `c` with it.
+- **WASM detail:** Blazor WASM trims resource strings (`UseSystemResourceKeys`), so in the browser the `NotSupportedException` message is only resource keys (`NotSupported_NonBacktrackingConflictingExpression, ExpressionDescription_Backreference`). The service extracts the construct from either form, so the user sees "NonBacktracking does not support this pattern: it contains backreference."
+- **Storage compatibility:** every new `RegexOptionsData` field has a `false` default, so the old 3-field JSON still deserializes. The legacy pipe-delimited format is still read. The JSON property names are unchanged. Change detection (`prevRegexConfig`) is now `(RegexText, RegexOptionsData)`, so toggling any option recompiles.
+- **Verified:**
+  - `dotnet build BlazorWasmRegex2.sln -c Release`: 0 warnings, 0 errors (baseline 0).
+  - `dotnet test tests/RegexService.Tests`: 86/86 pass (46 new). The new tests cover option mapping, the combination matrix against the real constructor, NonBacktracking unsupported constructs, parse errors, AnyNewLine behaviour, old 3-field JSON, the new JSON round trip, legacy pipe strings and full/trimmed exception messages.
+  - The app ran in Chrome (`dotnet run`, Development). Old 3-field JSON seeded into `localStorage` loaded with Ignore Case + Multiline checked. NonBacktracking with `(a)\1`, NonBacktracking + Any NewLine, and ECMAScript + Any NewLine each showed a friendly message with no crash. Any NewLine alone matched and was saved in the new JSON, and after a reload it came back checked with the Advanced section open.
+
 ## Known issues and follow-ups
 
 - **Harmless NUKE warning:** an "Exception was suppressed … NuGet.Frameworks 7.11.0.0" message appears during NUKE runs. Nuke's bundled NuGet assemblies are older than the .NET 11 SDK's MSBuild; Nuke catches the exception and the build succeeds. It should go away when Nuke ships a .NET 11-aware release.
-- **Possible feature:** expose `RegexOptions.AnyNewLine` as an option checkbox.
