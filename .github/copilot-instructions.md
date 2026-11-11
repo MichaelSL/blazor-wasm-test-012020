@@ -44,29 +44,16 @@ dotnet build
 # Run server (serves WASM app)
 dotnet run --project BlazorWasmRegex/Server/BlazorWasmRegex.Server.csproj
 
-# Using NUKE build system
-./build.sh Compile    # Linux/Mac
-./build.cmd Compile   # Windows
+# Tests
+dotnet test tests/RegexService.Tests
 ```
 
-### NUKE Build System
-This project uses **NUKE** for advanced build automation ([build/Build.cs](build/Build.cs)):
+### CI and images
+There is no build tool; GitHub Actions calls `dotnet` and Docker directly:
+- `.github/workflows/create-images.yml`: runs the tests, then builds the x64 (`Dockerfile`) and ARM (`Dockerfile-Arm`, `linux/arm/v7`) images and pushes them to `ghcr.io/<owner>/regex-tester:x64` / `:arm` (with a `-<branch>` suffix off master). Pull requests build but don't push.
+- `.github/workflows/cleanup-images.yml`: deletes a branch's image tags when the branch is deleted, and weekly removes untagged versions (>7 days) and branch tags (>30 days).
 
-Key targets:
-- `Compile`: Standard build
-- `Publish`: Publishes to `.artifacts/publish/`
-- `SetVersion`: Injects version from `Directory.build.props.template` (replaces `$ver` placeholder)
-- `BuildDockerContainer` / `BuildArmDockerContainer`: Build Docker images
-- `InsertCounterCode`: Injects analytics code at `<!-- Web Counter here -->` placeholder in `index.html`
-
-**Version Management**: Versions are generated dynamically: `{Year}.{Month}.{Day}.{BuildNumber}` from `GITHUB_RUN_NUMBER` env var.
-
-### Docker Deployment
-Two Dockerfiles for multi-arch support:
-- `Dockerfile`: x64 builds (uses .NET 7 Alpine images)
-- `Dockerfile-Arm`: ARM builds
-
-**Important**: `Directory.Build.props` is dynamically generated during build - never edit it directly. Modify `Directory.build.props.template` instead.
+**Version Management**: `Directory.Build.props` holds a default `Version` of `0.0.0.1`. CI passes `VERSION={Year}.{Month}.{Day}.{GITHUB_RUN_NUMBER}` and `SOURCE_REV=<short sha>` as Docker build args, which become `-p:Version` / `-p:SourceRevisionId`. The nav menu shows the informational version, e.g. `2026.11.10.57+a1b2c3d`.
 
 ## Code Conventions
 
@@ -92,7 +79,7 @@ Currently targeting **net10.0** (.NET 10) across all projects - check project fi
 ### Service Worker (PWA)
 The app is a Progressive Web App with offline support:
 - `service-worker.js`: Development service worker
-- `service-worker.published.js`: Production version (NUKE build appends timestamp for cache busting)
+- `service-worker.published.js`: Production version (the Docker build appends `// build: <commit>` to the container copy for cache busting)
 
 ### External Dependencies
 - **BlazorStrap** (v5.2.0): Bootstrap UI components

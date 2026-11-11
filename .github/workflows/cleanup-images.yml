@@ -1,0 +1,63 @@
+name: CleanupImages
+
+# Keeps only the latest images in ghcr.io/<owner>/regex-tester:
+# - when a branch is deleted, its x64-<branch> / arm-<branch> tags are removed;
+# - weekly, untagged versions older than 7 days and branch tags older than 30 days are removed.
+# The master tags `x64` and `arm` are never deleted.
+on:
+  delete:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only log what would be deleted
+        type: boolean
+        default: true
+
+permissions:
+  packages: write
+
+env:
+  IMAGE_NAME: regex-tester
+
+jobs:
+  branch-tags:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Compute branch tags
+      id: tags
+      shell: bash
+      env:
+        BRANCH: ${{ github.event.ref }}
+      run: |
+        suffix="${BRANCH//\//-}"
+        echo "Deleting tags for branch ${BRANCH}"
+        echo "tags=x64-${suffix},arm-${suffix}" >> "$GITHUB_OUTPUT"
+    - name: Delete branch tags
+      uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+      with:
+        package: ${{ env.IMAGE_NAME }}
+        delete-tags: ${{ steps.tags.outputs.tags }}
+        exclude-tags: x64,arm
+
+  scheduled:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Delete untagged versions older than 7 days
+      uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+      with:
+        package: ${{ env.IMAGE_NAME }}
+        delete-untagged: true
+        older-than: 7 days
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+    - name: Delete branch tags older than 30 days
+      uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+      with:
+        package: ${{ env.IMAGE_NAME }}
+        delete-tags: x64-*,arm-*
+        exclude-tags: x64,arm
+        older-than: 30 days
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
