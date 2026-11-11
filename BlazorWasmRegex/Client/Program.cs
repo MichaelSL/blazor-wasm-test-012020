@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using BlazorStrap;
 using BlazorWasmRegex.Shared.Interfaces;
 using BlazorWasmRegex.Shared.Services;
-using Blazored.LocalStorage;
+using BlazorWasmRegex.Client.Services;
 
 namespace BlazorWasmRegex.Client
 {
@@ -30,7 +30,8 @@ namespace BlazorWasmRegex.Client
         public static void ConfigureServices(IServiceCollection services)
         {
             services.AddBlazorStrap();
-            services.AddBlazoredLocalStorage();
+            services.AddScoped<IBrowserStorage, JsBrowserStorage>();
+            services.AddScoped<ILocalStorageService, LocalStorageService>();
 
             services.AddTransient<IRegexService, RegexService>();
             services.AddTransient<IHtmlHelperService, HtmlHelperService>();

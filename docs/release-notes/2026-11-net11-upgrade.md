@@ -90,6 +90,37 @@ The result tabs (Matches / Split list / Table / Capture Groups / Replace) never 
   - `./build.sh -Target Test` succeeds and runs the 7 tests.
   - `dotnet run --project BlazorWasmRegex/Server` (Development profile) serves `/` and `/_framework/blazor.webassembly.js` with HTTP 200.
 
+### Step 2: replace Blazored.LocalStorage
+
+- **Why:** every Blazored.LocalStorage version has been unlisted from NuGet, and 4.3.0 is marked deprecated ("Legacy"). The app only needs to get and set three strings, so the package is replaced by a small in-repo implementation.
+- **What changed:**
+  - Removed the `Blazored.LocalStorage` 4.5.0 package, the `@using Blazored.LocalStorage` line and `AddBlazoredLocalStorage()`.
+  - Added `Shared/Interfaces/IBrowserStorage.cs` (raw `localStorage` get/set) and `Shared/Interfaces/ILocalStorageService.cs`.
+  - Added `Shared/Services/LocalStorageService.cs`, which owns the format and error handling.
+  - Added `Client/Services/JsBrowserStorage.cs`, a thin wrapper over `localStorage.getItem`/`setItem` through `IJSRuntime`, so no new JS file is needed.
+  - Both services are registered (scoped, like Blazored) in `Program.ConfigureServices`. `RegexTester.razor` now calls `GetStringAsync`/`SetStringAsync`.
+- **Backward compatibility:** the format matches Blazored.LocalStorage 4.5.0, confirmed by decompiling the package with ilspycmd.
+  - Blazored wrote `JsonSerializer.Serialize(value, new JsonSerializerOptions())`, with default options plus a TimeSpan converter that doesn't affect strings. A string is therefore stored as a quoted JSON string with the default encoder's escapes (`\n`, `\u00E9`, `\u003C`, `\u0022`, …).
+  - On read, Blazored returned `null` for a missing, empty or whitespace-only value. Otherwise it deserialized the value and fell back to the raw text when it wasn't a JSON string.
+  - The new service does the same, so existing `REGEX_SESSION_STORAGE_KEY`, `TESTS_SESSION_STORAGE_KEY` and `REGEX_OPTIONS` values load unchanged, and rolling back to a Blazored build can read what this version writes.
+  - `REGEX_OPTIONS` stays a JSON object stored inside a JSON string, as before.
+  - One deliberate difference: a `JsonException` at a path other than `$` falls back to the raw value, where Blazored rethrew it. No input reaches this path when the value is a string.
+- **Storage unavailable:** if a read fails (for example a `JSException` when the browser blocks `localStorage`), the service returns `null`. A failed write is skipped. Only the first failure is logged to the console. The app keeps working, just without persistence. The wrapper suppresses the new .NET 11 analyzer warning BL0016 (unguarded JS interop call), with a comment, because the service handles these exceptions.
+- **Verified:**
+  - `dotnet build BlazorWasmRegex2.sln -c Release` gives 0 warnings and 0 errors.
+  - `dotnet test tests/RegexService.Tests` passes 40/40. The 33 new tests cover:
+    - round trips
+    - exact Blazored-format output
+    - reading Blazored-format values with escapes, unicode, CRLF/LF newlines and the double-encoded options JSON
+    - raw non-JSON fallback, including the legacy pipe-delimited options format
+    - missing, empty and `null` values returning `null`
+    - storage exceptions
+  - A scratch console app ran the real Blazored.LocalStorage 4.5.0 (with a fake `IJSRuntime`) side by side with the new service. Writes were byte-identical for 10 values, and reads were identical for 19 raw inputs, including malformed JSON, numbers, objects, arrays and comments.
+  - In Chrome against `dotnet run --project BlazorWasmRegex/Server`:
+    - Blazored-format values seeded into `localStorage` loaded correctly: pattern, unicode/newline test text and checkbox options.
+    - New writes used the same escaped format.
+    - With `window.localStorage` made to throw a `SecurityError`, the app loaded, matched normally and logged one "continuing without persistence" line.
+
 ## Known issues and follow-ups
 
 - **Harmless NUKE warning:** an "Exception was suppressed … NuGet.Frameworks 7.11.0.0" message appears during NUKE runs. Nuke's bundled NuGet assemblies are older than the .NET 11 SDK's MSBuild; Nuke catches the exception and the build succeeds. It should go away when Nuke ships a .NET 11-aware release.

@@ -1,12 +1,11 @@
 ﻿@using System.Text.RegularExpressions
-@using Blazored.LocalStorage
 @using BlazorWasmRegex.Shared.Services
 @using BlazorStrap
 @using Microsoft.JSInterop
 @using System.Text.Json
 @inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
 @inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
-@inject ILocalStorageService LocalStorage
+@inject BlazorWasmRegex.Shared.Interfaces.ILocalStorageService LocalStorage
 @inject IJSRuntime JS
 
 <p>
@@ -244,10 +243,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        RegexText = await LocalStorage.GetItemAsync<string>(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
-        Tests = await LocalStorage.GetItemAsync<string>(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
+        RegexText = await LocalStorage.GetStringAsync(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
+        Tests = await LocalStorage.GetStringAsync(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
         SelectedSample = string.Empty;
-        var savedOptions = await LocalStorage.GetItemAsync<string>("REGEX_OPTIONS");
+        var savedOptions = await LocalStorage.GetStringAsync("REGEX_OPTIONS");
         if (!string.IsNullOrEmpty(savedOptions))
         {
             // Try to parse as JSON first (new format)
@@ -342,8 +341,8 @@
                 testRegex = new Regex(RegexText, options, RegexTimeout);
                 prevRegexConfig = (RegexText, IgnoreCase, Multiline, Singleline);
 
-                await LocalStorage.SetItemAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
-                await LocalStorage.SetItemAsync("REGEX_OPTIONS", currentOptionsJson);
+                await LocalStorage.SetStringAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
+                await LocalStorage.SetStringAsync("REGEX_OPTIONS", currentOptionsJson);
             }
             catch (RegexParseException regexParseEx)
             {
@@ -385,7 +384,7 @@
             // Extract capture group data
             CaptureGroupData = ExtractCaptureGroupData(matches);
             
-            await LocalStorage.SetItemAsync(TESTS_SESSION_STORAGE_KEY, Tests);
+            await LocalStorage.SetStringAsync(TESTS_SESSION_STORAGE_KEY, Tests);
         }
         catch (RegexMatchTimeoutException timeoutEx)
         {

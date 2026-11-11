@@ -37,7 +37,7 @@ Docker image targets (`BuildDockerContainer`, `BuildArmDockerContainer`, `Push*`
 
 - Put testable logic in `BlazorWasmRegex/Shared` services behind an interface, register it in `Client/Program.cs`, and cover it with tests in `tests/RegexService.Tests`. Keep `.razor` components thin.
 - Regex objects are constructed in `RegexTester.razor` with a 2 s `RegexTimeout` to guard against catastrophic backtracking (`RegexMatchTimeoutException` is caught there) — preserve it when changing how regexes are built.
-- User state (pattern, tests, options) is persisted with `Blazored.LocalStorage`; regex options are stored as JSON. Keep stored formats backward compatible or handle migration.
+- User state (pattern, tests, options) is persisted in browser `localStorage` through `ILocalStorageService` (`Shared/Services/LocalStorageService.cs`, with the `Client/Services/JsBrowserStorage.cs` JS interop wrapper). It replaced `Blazored.LocalStorage` and keeps its on-disk format: each value is stored as a JSON-encoded string, and regex options are a JSON object inside that string. Keep stored formats backward compatible or handle migration. Storage failures are swallowed, so the app works without persistence.
 - UI uses BlazorStrap (Bootstrap 5).
 - `SetVersion` / `InsertCounterCode` build targets temporarily rewrite `Directory.Build.props`, `wwwroot/service-worker.published.js`, and `wwwroot/index.html`, then restore them. Don't commit those generated changes; `Directory.Build.props` is generated from `Directory.build.props.template` and is not gitignored, so check `git status` after running these targets.
 - Dependabot opens NuGet update PRs; keep package versions consistent across projects.
