@@ -47,7 +47,11 @@
     {
         try
         {
-            return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            var informationalVersion = System.Reflection.CustomAttributeExtensions
+                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
+                    System.Reflection.Assembly.GetExecutingAssembly())
+                ?.InformationalVersion;
+            return BlazorWasmRegex.Shared.Services.AppVersionFormatter.Format(informationalVersion);
         }
         catch
         {

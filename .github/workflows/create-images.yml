@@ -1,9 +1,7 @@
-# This is a basic workflow to help you get started with Actions
-
 name: BuildAndUploadImages
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# Push to master or feature/** builds, tests and pushes images.
+# Pull requests to master build and test, but don't push: the PR's feature/** branch push already publishes its images.
 on:
   push:
     branches:
@@ -17,37 +15,97 @@ on:
     branches: [ master ]
 
 env:
-  DOTNET_NOLOGO: true                     # Disable the .NET logo
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true # Disable the .NET first time experience
-  DOTNET_CLI_TELEMETRY_OPTOUT: true       # Disable sending .NET CLI telemetry
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  REGISTRY: ghcr.io
+  IMAGE_NAME: regex-tester
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: [ ubuntu-latest ]
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  test:
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
     - name: Setup .NET 11
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 11.0.x
-    - name: Set build script eXecutable
-      id: builscriptexec
-      run: chmod +x ./build.sh
+    - name: Test
+      run: dotnet test tests/RegexService.Tests --configuration Release
+
+  images:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Compute version and tags
+      id: meta
+      shell: bash
+      run: |
+        version="$(date -u +%Y.%-m.%-d).${GITHUB_RUN_NUMBER}"
+        rev="${GITHUB_SHA::7}"
+        owner="${GITHUB_REPOSITORY_OWNER,,}"
+        base="${REGISTRY}/${owner}/${IMAGE_NAME}"
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+          suffix="-pr"
+        elif [ "${GITHUB_REF_NAME}" = "master" ]; then
+          suffix=""
+        else
+          suffix="-${GITHUB_REF_NAME//\//-}"
+        fi
+        echo "Version: ${version}+${rev}"
+        {
+          echo "version=${version}"
+          echo "rev=${rev}"
+          echo "x64_tag=${base}:x64${suffix}"
+          echo "arm_tag=${base}:arm${suffix}"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
     - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
+      if: github.event_name == 'push'
+      uses: docker/login-action@v4
       with:
-        registry: ghcr.io
+        registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    # provenance: false keeps each image a single manifest, so the cleanup workflow
+    # can delete untagged versions without orphaning attestation children.
     - name: Build ARM container
-      id: armcontainer
-      run: ./build.sh -Target PushArmDockerContainer -GitHubOwner "${{ github.repository_owner }}" -GitHubToken "${{ secrets.GITHUB_TOKEN }}"
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: BlazorWasmRegex/Server/Dockerfile-Arm
+        # Without an explicit target platform, the image index is labelled with the runner's
+        # platform (amd64), and arm/v7 hosts can't pull it.
+        platforms: linux/arm/v7
+        no-cache: true
+        provenance: false
+        build-args: |
+          VERSION=${{ steps.meta.outputs.version }}
+          SOURCE_REV=${{ steps.meta.outputs.rev }}
+        tags: ${{ steps.meta.outputs.arm_tag }}
+        push: ${{ github.event_name == 'push' }}
+
     - name: Build x64 container
-      id: x64container
-      run: ./build.sh -Target PushDockerContainer -GitHubOwner "${{ github.repository_owner }}" -GitHubToken "${{ secrets.GITHUB_TOKEN }}"
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: BlazorWasmRegex/Server/Dockerfile
+        platforms: linux/amd64
+        no-cache: true
+        provenance: false
+        build-args: |
+          VERSION=${{ steps.meta.outputs.version }}
+          SOURCE_REV=${{ steps.meta.outputs.rev }}
+        tags: ${{ steps.meta.outputs.x64_tag }}
+        push: ${{ github.event_name == 'push' }}
