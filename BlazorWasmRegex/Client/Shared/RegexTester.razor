@@ -10,21 +10,25 @@
 @inject BlazorWasmRegex.Shared.Interfaces.ILocalStorageService LocalStorage
 @inject IJSRuntime JS
 
-<p>
-    <label>Samples:</label>
-    <select class="form-select" @onchange="OnSampleChanged">
+@* Prerendered on the server with every control disabled: typing into the static copy would be lost
+   when the interactive component replaces it. *@
+<fieldset disabled="@(!RendererInfo.IsInteractive)" @onkeydown="OnFormKeyDown">
+<div class="mb-3">
+    <label for="sample" class="form-label">Samples:</label>
+    <select id="sample" class="form-select" @onchange="OnSampleChanged">
         <option value="">-- Select a sample --</option>
         <option value="Email">Email</option>
         <option value="Phone">Phone</option>
         <option value="Url">URL</option>
     </select>
-</p>
-<p>
-    <label>Regex:</label>
-    <input class="form-control" @bind="RegexText" />
-</p>
-<p>
-    <label>Options:</label>
+</div>
+<div class="mb-3">
+    <label for="regexPattern" class="form-label">Regex:</label>
+    <input id="regexPattern" class="form-control font-monospace" @bind="RegexText" @bind:event="oninput"
+           spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="e.g., (?<year>\d{4})-(?<month>\d{2})" />
+</div>
+<div class="mb-3">
+    <span class="form-label mr-2">Options:</span>
     <div class="form-check form-check-inline" title="Case-insensitive matching.">
         <input class="form-check-input" type="checkbox" @bind="IgnoreCase" id="ignoreCase">
         <label class="form-check-label" for="ignoreCase">Ignore Case</label>
@@ -74,17 +78,20 @@
             </div>
         </div>
     }
-</p>
-<p>
-    <label>Replacement Pattern:</label>
-    <input class="form-control" @bind="ReplacementPattern" placeholder="e.g., $1, ${name}, or literal text" />
+</div>
+<div class="mb-3">
+    <label for="replacementPattern" class="form-label">Replacement Pattern:</label>
+    <input id="replacementPattern" class="form-control font-monospace" @bind="ReplacementPattern" @bind:event="oninput"
+           spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="e.g., $1, ${name}, or literal text" />
     <small class="form-text text-muted">Use $1, $2 for numbered groups or ${name} for named groups</small>
-</p>
-<p>
-    <label>Tests:</label>
-    <textarea class="form-control" @bind="Tests" rows="10"></textarea>
-</p>
-<p>
+</div>
+<div class="mb-3">
+    <label for="tests" class="form-label">Tests (one per line):</label>
+    <textarea id="tests" class="form-control font-monospace" @bind="Tests" @bind:event="oninput" rows="10"
+              spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+    <small class="form-text text-muted">Press Ctrl+Enter to run the test.</small>
+</div>
+<div class="mb-3">
     <div class="hr-flex-container">
         <div>
             <BSButton Color="BSColor.Primary" OnClick="@Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
@@ -93,12 +100,20 @@
             <BSButton Color="BSColor.Secondary" OnClick="@ExportAsCsv" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>CSV</BSButton>
             <BSButton Color="BSColor.Secondary" OnClick="@ExportAsText" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>Text</BSButton>
         </div>
-        <div class="space-out">
-            <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@((MarkupString)Message)
+        <div class="space-out" role="status">
+            <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@if (RendererInfo.IsInteractive)
+            {
+                @((MarkupString)Message)
+            }
+            else
+            {
+                <text>Loading the .NET regex engine…</text>
+            }
         </div>
     </div>
-</p>
-<p>
+</div>
+</fieldset>
+<div class="mb-3">
     <BSTabWrapper>
         <BSNav IsTabs="true">
             <BSNavItem IsActive="true">
@@ -230,7 +245,7 @@
         </BSNav>
         <BSTabRender />
     </BSTabWrapper>
-</p>
+</div>
 
 @code {
     const string REGEX_SESSION_STORAGE_KEY = nameof(REGEX_SESSION_STORAGE_KEY);
@@ -291,6 +306,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // While prerendering on the server there is no browser storage (no JS interop).
+        if (!RendererInfo.IsInteractive)
+            return;
+
         RegexText = await LocalStorage.GetStringAsync(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
         Tests = await LocalStorage.GetStringAsync(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
         SelectedSample = string.Empty;
@@ -325,6 +344,14 @@
         RightToLeft = options.RightToLeft;
         CultureInvariant = options.CultureInvariant;
         ECMAScript = options.ECMAScript;
+    }
+
+    private async Task OnFormKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+        {
+            await Test_Click(null);
+        }
     }
 
     private async Task OnSampleChanged(ChangeEventArgs e)

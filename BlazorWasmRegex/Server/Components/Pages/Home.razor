@@ -1,0 +1,17 @@
+@page "/"
+
+<PageMeta Title=".NET Regex Tester – test C# regular expressions online"
+          Description="Free online .NET regular expression tester. Test C# regex patterns, options, matches, capture groups, split and replace with the real .NET Regex engine, running in your browser via WebAssembly. Your data never leaves your browser."
+          Path="/" />
+
+<h1 class="page-title">.NET Regex Tester</h1>
+<p class="text-muted">
+    Test C# regular expressions on the real .NET <code>System.Text.RegularExpressions</code> engine.
+    It runs in your browser with WebAssembly, so your patterns and test data are never sent to a server.
+</p>
+
+@* The only interactive part of the site. Prerendered (disabled) so the form is visible and indexable
+   before the .NET runtime has loaded. *@
+<RegexTester @rendermode="InteractiveWebAssembly" />
+
+<RegexCheatSheet />

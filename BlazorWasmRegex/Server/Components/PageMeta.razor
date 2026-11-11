@@ -1,0 +1,21 @@
+@* Per-page <title>, description, canonical link and Open Graph tags. *@
+<PageTitle>@Title</PageTitle>
+<HeadContent>
+    <meta name="description" content="@Description" />
+    <link rel="canonical" href="@Url" />
+    <meta property="og:title" content="@Title" />
+    <meta property="og:description" content="@Description" />
+    <meta property="og:url" content="@Url" />
+</HeadContent>
+
+@code {
+    // Pages are prerendered at build time, so absolute URLs can't come from the request.
+    public const string SiteUrl = "https://dotnet-regex.com";
+
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Description { get; set; } = "";
+    /// <summary>Site-relative path such as "/" or "/about".</summary>
+    [Parameter, EditorRequired] public string Path { get; set; } = "/";
+
+    private string Url => SiteUrl + Path;
+}

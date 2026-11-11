@@ -1,0 +1,91 @@
+@* Static .NET regex quick reference shown under the tester. *@
+<section class="cheat-sheet mt-5" aria-labelledby="cheat-sheet-title">
+    <h2 id="cheat-sheet-title" class="h4">.NET regex quick reference</h2>
+    <div class="cheat-sheet-grid">
+        @foreach (var section in Sections)
+        {
+            <div class="cheat-sheet-section">
+                <h3 class="h6">@section.Title</h3>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        @foreach (var (syntax, meaning) in section.Rows)
+                        {
+                            <tr>
+                                <td><code>@syntax</code></td>
+                                <td>@meaning</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private sealed record Section(string Title, (string Syntax, string Meaning)[] Rows);
+
+    private static readonly Section[] Sections =
+    [
+        new("Character classes",
+        [
+            (".", "Any character except \\n (any character with Singleline)"),
+            ("\\d  \\D", "Digit / not a digit (any Unicode decimal digit unless ECMAScript)"),
+            ("\\w  \\W", "Word character / not a word character"),
+            ("\\s  \\S", "Whitespace / not whitespace"),
+            ("[abc]  [^abc]", "Any of a, b, c / anything except a, b, c"),
+            ("[a-z]", "Character range"),
+            ("[a-z-[aeiou]]", "Character class subtraction: consonants only"),
+            ("\\p{Lu}  \\P{Lu}", "Unicode category or named block (\\p{IsCyrillic}) / its negation"),
+        ]),
+        new("Anchors",
+        [
+            ("^  $", "Start / end of the input, or of each line with Multiline ($ also matches before a final \\n)"),
+            ("\\A  \\z", "Start / end of the input only"),
+            ("\\Z", "End of the input or before a final \\n"),
+            ("\\b  \\B", "Word boundary / not a word boundary"),
+            ("\\G", "Where the previous match ended"),
+        ]),
+        new("Quantifiers",
+        [
+            ("*  +  ?", "0 or more / 1 or more / 0 or 1"),
+            ("{n}  {n,}  {n,m}", "Exactly n / at least n / between n and m"),
+            ("*?  +?  ??  {n,m}?", "Lazy versions: match as few as possible"),
+        ]),
+        new("Groups and lookarounds",
+        [
+            ("(...)", "Numbered capturing group"),
+            ("(?<name>...)", "Named capturing group"),
+            ("(?:...)", "Non-capturing group"),
+            ("(?>...)", "Atomic group (no backtracking into it)"),
+            ("(?=...)  (?!...)", "Positive / negative lookahead"),
+            ("(?<=...)  (?<!...)", "Positive / negative lookbehind"),
+            ("\\1  \\k<name>", "Backreference to a numbered / named group"),
+            ("(?<open-close>...)", "Balancing group, for matching nested constructs"),
+            ("a|b", "Alternation: a or b"),
+            ("(?(name)yes|no)", "Conditional: yes if the group matched, else no"),
+        ]),
+        new("Inline options",
+        [
+            ("(?i)  (?m)  (?s)", "IgnoreCase / Multiline / Singleline from here on"),
+            ("(?n)  (?x)", "ExplicitCapture / IgnorePatternWhitespace"),
+            ("(?i:...)", "Option for this group only"),
+            ("(?-i)", "Turn an option off"),
+        ]),
+        new("Substitutions (Replace)",
+        [
+            ("$1  ${name}", "Text of a numbered / named group"),
+            ("$0  $&", "The whole match"),
+            ("$`  $'", "Input before / after the match"),
+            ("$+", "The last captured group"),
+            ("$_", "The entire input"),
+            ("$$", "A literal $"),
+        ]),
+        new("Escapes",
+        [
+            ("\\.  \\*  \\\\", "Literal ., *, \\ (escape any metacharacter)"),
+            ("\\t  \\n  \\r", "Tab / line feed / carriage return"),
+            ("\\x20  \\u0020", "Character by hex code"),
+        ]),
+    ];
+}
