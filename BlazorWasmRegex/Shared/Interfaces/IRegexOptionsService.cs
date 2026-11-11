@@ -18,6 +18,13 @@ namespace BlazorWasmRegex.Shared.Interfaces
         IReadOnlyList<string> Validate(RegexOptionsData data);
 
         /// <summary>
+        /// Why the option <paramref name="optionId"/> (a <see cref="RegexOptionInfo.Id"/>) cannot be
+        /// switched on together with the other options in <paramref name="data"/>, or <c>null</c> when it
+        /// can. An option that is already on is never locked, so the user can always turn it off.
+        /// </summary>
+        string? GetDisabledReason(string optionId, RegexOptionsData data);
+
+        /// <summary>
         /// Validates the options and constructs the regex with <paramref name="matchTimeout"/>,
         /// turning construction failures (parse errors, invalid options, constructs unsupported by
         /// NonBacktracking) into an error result instead of an exception.

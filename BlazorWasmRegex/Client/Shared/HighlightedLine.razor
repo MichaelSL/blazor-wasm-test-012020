@@ -1,0 +1,22 @@
+@using BlazorWasmRegex.Shared.Models
+@* A test line with its matches highlighted. data-m links the same match in every view (hover, app.js). *@
+@foreach (var span in Spans)
+{
+    if (!span.IsMatch)
+    {
+        @span.Runs[0].Text
+    }
+    else if (span.IsEmptyMatch)
+    {
+        <span class="hl-match hl-empty" data-m="@Line.MatchId(span.MatchIndex!.Value)"></span>
+    }
+    else
+    {
+        <span class="hl-match" data-m="@Line.MatchId(span.MatchIndex!.Value)"><MatchRuns Runs="span.Runs" /></span>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public LineResult Line { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyList<HighlightSpan> Spans { get; set; } = [];
+}

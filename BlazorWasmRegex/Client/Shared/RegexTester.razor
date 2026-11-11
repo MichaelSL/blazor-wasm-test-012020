@@ -1,685 +1,362 @@
-﻿@using System.Text.RegularExpressions
+﻿@using BlazorWasmRegex.Shared.Models
 @using BlazorWasmRegex.Shared.Services
-@using BlazorStrap
-@using Microsoft.JSInterop
-@using System.Text.Json
-@using BlazorWasmRegex.Shared.Models
-@inject BlazorWasmRegex.Shared.Interfaces.IRegexService regexService
-@inject BlazorWasmRegex.Shared.Interfaces.IHtmlHelperService htmlHelperService
-@inject BlazorWasmRegex.Shared.Interfaces.IRegexOptionsService regexOptionsService
-@inject BlazorWasmRegex.Shared.Interfaces.ILocalStorageService LocalStorage
-@inject IJSRuntime JS
 
-@* Prerendered on the server with every control disabled: typing into the static copy would be lost
-   when the interactive component replaces it. *@
-<fieldset disabled="@(!RendererInfo.IsInteractive)" @onkeydown="OnFormKeyDown">
-<div class="mb-3">
-    <label for="sample" class="form-label">Samples:</label>
-    <select id="sample" class="form-select" @onchange="OnSampleChanged">
-        <option value="">-- Select a sample --</option>
-        <option value="Email">Email</option>
-        <option value="Phone">Phone</option>
-        <option value="Url">URL</option>
-    </select>
-</div>
-<div class="mb-3">
-    <label for="regexPattern" class="form-label">Regex:</label>
-    <input id="regexPattern" class="form-control font-monospace" @bind="RegexText" @bind:event="oninput"
-           spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="e.g., (?<year>\d{4})-(?<month>\d{2})" />
-</div>
-<div class="mb-3">
-    <span class="form-label mr-2">Options:</span>
-    <div class="form-check form-check-inline" title="Case-insensitive matching.">
-        <input class="form-check-input" type="checkbox" @bind="IgnoreCase" id="ignoreCase">
-        <label class="form-check-label" for="ignoreCase">Ignore Case</label>
-    </div>
-    <div class="form-check form-check-inline" title="^ and $ match at the start and end of each line, not just the whole input.">
-        <input class="form-check-input" type="checkbox" @bind="Multiline" id="multiline">
-        <label class="form-check-label" for="multiline">Multiline</label>
-    </div>
-    <div class="form-check form-check-inline" title="The dot (.) also matches \n.">
-        <input class="form-check-input" type="checkbox" @bind="Singleline" id="singleline">
-        <label class="form-check-label" for="singleline">Singleline</label>
-    </div>
-    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="() => ShowAdvancedOptions = !ShowAdvancedOptions"
-            aria-expanded="@(ShowAdvancedOptions ? "true" : "false")" aria-controls="advancedOptions">
-        @(ShowAdvancedOptions ? "Hide advanced" : "Advanced")@(AdvancedOptionsCount > 0 ? $" ({AdvancedOptionsCount} on)" : "")
-    </button>
-    @if (ShowAdvancedOptions)
-    {
-        <div id="advancedOptions" class="mt-1">
-            <div class="form-check form-check-inline" title="(.NET 11) ^, $, \Z and . treat \r\n, \r, \n, \u0085, \u2028 and \u2029 as line breaks, not only \n. Not compatible with NonBacktracking or ECMAScript.">
-                <input class="form-check-input" type="checkbox" @bind="AnyNewLine" id="anyNewLine">
-                <label class="form-check-label" for="anyNewLine">Any NewLine</label>
+@* Prerendered on the server with every control disabled (typing into the static copy would be lost when
+   the interactive component replaces it). Scroll sync, gutter heights, copy buttons and hover linking
+   live in js/app.js (regexTester.attach). *@
+<div class="workbench" @ref="root" data-engine="@(IsReady ? "ready" : "loading")">
+
+    @* ================= Left pane: inputs ================= *@
+    <section class="pane editor-pane" aria-label="Pattern and test input">
+        <fieldset class="editor-pane__fieldset" disabled="@(!IsReady)" @onkeydown="OnFormKeyDown">
+            <legend class="visually-hidden">Regex tester input</legend>
+
+            <div class="editor-pane__section">
+                <div class="field">
+                    <div class="field__head">
+                        <label class="field__label" for="patternInput">Regular expression</label>
+                        <div class="samples" role="group" aria-label="Load a sample">
+                            <span class="samples__label">Samples</span>
+                            <div class="segmented">
+                                @foreach (var sample in SampleRegexLibrary.All)
+                                {
+                                    <button type="button" class="segmented__btn" aria-pressed="@(IsSampleActive(sample) ? "true" : "false")"
+                                            @onclick="() => LoadSample(sample)">@sample.Label</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pattern-field @(State == RunState.Error ? "is-error" : null) @(State == RunState.Timeout ? "is-timeout" : null)">
+                        <span class="pattern-field__delim pattern-field__delim--open" aria-hidden="true">/</span>
+                        <div class="code-input">
+                            <pre class="code-input__backdrop" aria-hidden="true"><span class="code-input__mirror">@foreach (var seg in PatternSegments)
+                                {
+                                    if (seg.CssClass is null)
+                                    {
+                                        @seg.Text
+                                    }
+                                    else
+                                    {
+                                        <span class="@seg.CssClass">@seg.Text</span>
+                                    }
+                                }</span></pre>
+                            <input class="code-input__control" id="patternInput" type="text"
+                                   @bind="Pattern" @bind:event="oninput" @bind:after="OnInputChanged"
+                                   spellcheck="false" autocomplete="off" autocapitalize="off"
+                                   placeholder="Enter a .NET pattern, e.g. (?<word>\w+)"
+                                   aria-invalid="@(State == RunState.Error ? "true" : "false")" aria-describedby="patternMsg" />
+                        </div>
+                        <span class="pattern-field__delim" aria-hidden="true">/</span>
+                        @{ var (letters, extras) = Flags(); }
+                        <span class="pattern-field__flags" title="Active options" aria-label="@FlagsLabel(letters, extras)">
+                            @if (letters.Length == 0 && extras.Length == 0)
+                            {
+                                <span class="flag-off">—</span>
+                            }
+                            else
+                            {
+                                @letters
+                                @if (extras.Length > 0)
+                                {
+                                    @if (letters.Length > 0)
+                                    {
+                                        <span class="flag-off">·</span>
+                                    }
+                                    @extras
+                                }
+                            }
+                        </span>
+                    </div>
+                    <div id="patternMsg" aria-live="polite">
+                        @if (State == RunState.Error)
+                        {
+                            <p class="field-msg field-msg--error"><Icon Name="alert" Size="14" /><span>@PatternErrorText()</span></p>
+                        }
+                        else if (State == RunState.Timeout)
+                        {
+                            <p class="field-msg field-msg--timeout">
+                                <Icon Name="clock" Size="14" />
+                                <span>
+                                    This pattern backtracks too much on some test lines. Avoid nested quantifiers such as <code>(a+)+</code>@(Options.NonBacktracking ? "." : ", or enable NonBacktracking under Advanced.")
+                                </span>
+                            </p>
+                        }
+                    </div>
+                </div>
             </div>
-            <div class="form-check form-check-inline" title="Linear-time engine without backtracking. Does not support backreferences, lookarounds, atomic groups, conditionals, balancing groups or \G; not compatible with RightToLeft, ECMAScript or AnyNewLine.">
-                <input class="form-check-input" type="checkbox" @bind="NonBacktracking" id="nonBacktracking">
-                <label class="form-check-label" for="nonBacktracking">NonBacktracking</label>
+
+            <div class="editor-pane__section">
+                <div class="field">
+                    <div class="field__head"><span class="field__label" id="optionsLabel">Options</span></div>
+                    <div class="option-bar" role="group" aria-labelledby="optionsLabel">
+                        @foreach (var o in RegexOptionInfo.All.Where(o => o.IsPrimary))
+                        {
+                            var reason = RegexOptionsService.GetDisabledReason(o.Id, Options);
+                            <span class="option-chip">
+                                <input class="option-chip__input" type="checkbox" id="opt-@o.Id" checked="@Options.IsSet(o.Id)"
+                                       disabled="@(reason is not null)" aria-describedby="tip-@o.Id"
+                                       @onchange="e => OnOptionChanged(o.Id, e)" />
+                                <label class="option-chip__label" for="opt-@o.Id">
+                                    <span class="option-chip__check"><Icon Name="check" /></span>@o.Label<span class="option-chip__flag">@o.Flag</span>
+                                </label>
+                                <OptionTooltip Option="o" Reason="@reason" />
+                            </span>
+                        }
+                    </div>
+                    <div class="advanced @(ShowAdvanced ? "is-open" : null)">
+                        <button type="button" class="advanced__summary" aria-expanded="@(ShowAdvanced ? "true" : "false")" aria-controls="advancedGrid"
+                                @onclick="() => ShowAdvanced = !ShowAdvanced">
+                            <Icon Name="chevron-right" Class="advanced__chev" />
+                            Advanced
+                            <span class="count-badge @(AdvancedOnCount > 0 ? "is-active" : null)"
+                                  aria-label="@($"{AdvancedOnCount} advanced option{(AdvancedOnCount == 1 ? "" : "s")} enabled")">@AdvancedOnCount</span>
+                            <span class="advanced__summary-hint">7 more RegexOptions</span>
+                        </button>
+                        @if (ShowAdvanced)
+                        {
+                            <div class="advanced__grid" id="advancedGrid">
+                                @foreach (var o in RegexOptionInfo.All.Where(o => !o.IsPrimary))
+                                {
+                                    var reason = RegexOptionsService.GetDisabledReason(o.Id, Options);
+                                    <div class="adv-option @(reason is not null ? "is-disabled" : null)">
+                                        <label class="adv-option__label" for="opt-@o.Id">
+                                            <input class="adv-option__input" type="checkbox" id="opt-@o.Id" checked="@Options.IsSet(o.Id)"
+                                                   disabled="@(reason is not null)" aria-describedby="tip-@o.Id"
+                                                   @onchange="e => OnOptionChanged(o.Id, e)" />
+                                            <span class="adv-option__text">
+                                                <span class="adv-option__name">@o.Label@if (o.Tag is not null)
+                                                    {
+                                                        <span class="option-tag">@o.Tag</span>
+                                                    }</span>
+                                                @if (reason is not null)
+                                                {
+                                                    <span class="adv-option__reason">@reason</span>
+                                                }
+                                            </span>
+                                            <span class="adv-option__flag">@o.Flag</span>
+                                        </label>
+                                        <OptionTooltip Option="o" Reason="@reason" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
-            <div class="form-check form-check-inline" title="Only named or numbered groups like (?&lt;name&gt;...) capture; plain (...) groups do not.">
-                <input class="form-check-input" type="checkbox" @bind="ExplicitCapture" id="explicitCapture">
-                <label class="form-check-label" for="explicitCapture">Explicit Capture</label>
+
+            <div class="editor-pane__section">
+                <div class="field">
+                    <label class="field__label" for="replaceInput">Replacement <span class="field__hint field__hint--inline">(optional)</span></label>
+                    <div class="text-input-wrap">
+                        <input class="text-input" id="replaceInput" type="text"
+                               @bind="Replacement" @bind:event="oninput" @bind:after="OnInputChanged"
+                               spellcheck="false" autocomplete="off" autocapitalize="off"
+                               placeholder="e.g. ${user} at ${domain}" aria-describedby="replaceHint" />
+                    </div>
+                    <p class="field__hint" id="replaceHint">Use <code>$1</code>, <code>$2</code> for numbered groups, <code>${name}</code> for named groups.</p>
+                </div>
             </div>
-            <div class="form-check form-check-inline" title="Ignore unescaped whitespace in the pattern and allow # comments.">
-                <input class="form-check-input" type="checkbox" @bind="IgnorePatternWhitespace" id="ignorePatternWhitespace">
-                <label class="form-check-label" for="ignorePatternWhitespace">Ignore Pattern Whitespace</label>
+
+            <div class="editor-pane__section">
+                <div class="field">
+                    <div class="field__head">
+                        <label class="field__label" for="testInput">Test strings</label>
+                        <span class="field__hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs</span>
+                    </div>
+                    <p class="field__hint" id="testHint">One test per line; each line is matched on its own. The gutter shows the matches per line.</p>
+                    @{ var editorLines = EditorLines(Tests); }
+                    <div class="test-editor">
+                        <div class="test-editor__gutter" aria-hidden="true">
+                            <div class="test-editor__gutter-inner">
+                                @for (var i = 0; i < editorLines.Count; i++)
+                                {
+                                    var line = ResultForLine(i, editorLines[i]);
+                                    var status = line is null || line.IsEmpty ? null : line.Matches.Count > 0 ? "is-hit" : "is-miss";
+                                    <div class="gutter-row @status">
+                                        <span class="gutter-row__num">@(i + 1)</span>
+                                        <span class="gutter-row__status">
+                                            @if (status == "is-hit")
+                                            {
+                                                <Icon Name="check" Size="10" />@line!.Matches.Count
+                                            }
+                                            else if (status == "is-miss")
+                                            {
+                                                <text>–</text>
+                                            }
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="test-editor__body">
+                            <div class="test-editor__backdrop" aria-hidden="true">
+                                @for (var i = 0; i < editorLines.Count; i++)
+                                {
+                                    var line = ResultForLine(i, editorLines[i]);
+                                    <div class="test-editor__line">@if (line is { Matches.Count: > 0 })
+                                        {
+                                            <HighlightedLine Line="line" Spans="Evaluator.HighlightLine(line.Text, line.Matches)" />
+                                        }
+                                        else
+                                        {
+                                            @editorLines[i]
+                                        }</div>
+                                }
+                            </div>
+                            <textarea class="test-editor__input" id="testInput" wrap="soft"
+                                      @bind="Tests" @bind:event="oninput" @bind:after="OnInputChanged"
+                                      spellcheck="false" autocomplete="off" autocapitalize="off"
+                                      aria-describedby="testHint" placeholder="Paste or type test strings, one per line"></textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-check form-check-inline" title="Search from right to left. Not compatible with NonBacktracking.">
-                <input class="form-check-input" type="checkbox" @bind="RightToLeft" id="rightToLeft">
-                <label class="form-check-label" for="rightToLeft">Right To Left</label>
+
+            <div class="editor-pane__section editor-pane__section--actions">
+                <div class="action-bar">
+                    <button class="btn btn--primary" type="button" @onclick="TestClick">
+                        <Icon Name="play" />Test<span class="btn__kbd" aria-hidden="true">Ctrl+↵</span>
+                    </button>
+                    <label class="switch" title="Re-run automatically while you type">
+                        <input class="switch__input" type="checkbox" checked="@Live" @onchange="OnLiveChanged" />
+                        <span class="switch__track" aria-hidden="true"></span>
+                        Live
+                    </label>
+                    <span class="action-bar__spacer"></span>
+                    <button class="btn" type="button" @onclick="ReplaceClick" disabled="@string.IsNullOrEmpty(Replacement)"
+                            title="@(string.IsNullOrEmpty(Replacement) ? "Enter a replacement pattern to enable" : "Show Regex.Replace results")">
+                        <Icon Name="replace" />Replace
+                    </button>
+                    <div class="menu" @onkeydown="OnExportKeyDown">
+                        <button class="btn" type="button" aria-haspopup="menu" aria-expanded="@(ExportOpen ? "true" : "false")" aria-controls="exportList"
+                                disabled="@(!CanExport)" title="@(CanExport ? "Export matches" : "No matches to export")" @onclick="ToggleExport">
+                            <Icon Name="download" />Export<Icon Name="chevron-down" />
+                        </button>
+                        @if (ExportOpen)
+                        {
+                            <div class="menu__backdrop" @onclick="() => ExportOpen = false"></div>
+                            <ul class="menu__list" id="exportList" role="menu">
+                                <li role="none">
+                                    <button class="menu__item" role="menuitem" type="button" @onclick='() => Export("json")'>
+                                        <Icon Name="brackets" /><span class="menu__item-text"><span class="menu__item-title">JSON</span><span class="menu__item-sub">Matches with groups and positions</span></span>
+                                    </button>
+                                </li>
+                                <li role="none">
+                                    <button class="menu__item" role="menuitem" type="button" @onclick='() => Export("csv")'>
+                                        <Icon Name="table" /><span class="menu__item-text"><span class="menu__item-title">CSV</span><span class="menu__item-sub">One row per match</span></span>
+                                    </button>
+                                </li>
+                                <li role="none">
+                                    <button class="menu__item" role="menuitem" type="button" @onclick='() => Export("txt")'>
+                                        <Icon Name="file" /><span class="menu__item-text"><span class="menu__item-title">Text</span><span class="menu__item-sub">Readable summary of the matches</span></span>
+                                    </button>
+                                </li>
+                            </ul>
+                        }
+                    </div>
+                </div>
             </div>
-            <div class="form-check form-check-inline" title="Ignore cultural differences in language when ignoring case.">
-                <input class="form-check-input" type="checkbox" @bind="CultureInvariant" id="cultureInvariant">
-                <label class="form-check-label" for="cultureInvariant">Culture Invariant</label>
-            </div>
-            <div class="form-check form-check-inline" title="ECMAScript-compliant behaviour. Can only be combined with Ignore Case, Multiline and Culture Invariant.">
-                <input class="form-check-input" type="checkbox" @bind="ECMAScript" id="ecmaScript">
-                <label class="form-check-label" for="ecmaScript">ECMAScript</label>
-            </div>
-        </div>
-    }
-</div>
-<div class="mb-3">
-    <label for="replacementPattern" class="form-label">Replacement Pattern:</label>
-    <input id="replacementPattern" class="form-control font-monospace" @bind="ReplacementPattern" @bind:event="oninput"
-           spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="e.g., $1, ${name}, or literal text" />
-    <small class="form-text text-muted">Use $1, $2 for numbered groups or ${name} for named groups</small>
-</div>
-<div class="mb-3">
-    <label for="tests" class="form-label">Tests (one per line):</label>
-    <textarea id="tests" class="form-control font-monospace" @bind="Tests" @bind:event="oninput" rows="10"
-              spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
-    <small class="form-text text-muted">Press Ctrl+Enter to run the test.</small>
-</div>
-<div class="mb-3">
-    <div class="hr-flex-container">
-        <div>
-            <BSButton Color="BSColor.Primary" OnClick="@Test_Click"><span class="oi oi-beaker" aria-hidden="true">&nbsp;</span>Test</BSButton>
-            <BSButton Color="BSColor.Success" OnClick="@Replace_Click" Disabled="@string.IsNullOrEmpty(ReplacementPattern)"><span class="oi oi-loop-circular" aria-hidden="true">&nbsp;</span>Replace</BSButton>
-            <BSButton Color="BSColor.Secondary" OnClick="@ExportAsJson" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>JSON</BSButton>
-            <BSButton Color="BSColor.Secondary" OnClick="@ExportAsCsv" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>CSV</BSButton>
-            <BSButton Color="BSColor.Secondary" OnClick="@ExportAsText" Disabled="@(!NotEmptyMatches.Any())"><span class="oi oi-data-transfer-download" aria-hidden="true">&nbsp;</span>Text</BSButton>
-        </div>
-        <div class="space-out" role="status">
-            <span class="oi oi-terminal" aria-hidden="true">&nbsp;</span>@if (RendererInfo.IsInteractive)
+        </fieldset>
+    </section>
+
+    @* ================= Right pane: results ================= *@
+    <section class="pane results-pane" aria-label="Results">
+        <StatusBar Kind="@StatusKind" Main="@StatusMain" Sub="@StatusSub" />
+        <div class="result-tabs" role="tablist" aria-label="Result views" @onkeydown="OnTabKeyDown">
+            @foreach (var tab in Tabs)
             {
-                @((MarkupString)Message)
+                var selected = tab.Key == ActiveTab;
+                <button class="result-tab" role="tab" type="button" id="tab-@tab.Key" aria-controls="panel-@tab.Key"
+                        aria-selected="@(selected ? "true" : "false")" tabindex="@(selected ? 0 : -1)"
+                        @ref="tabRefs[tab.Key]" @onclick="() => SelectTab(tab.Key)">
+                    @tab.Label <span class="count-badge">@tab.Count</span>
+                </button>
+            }
+        </div>
+        <div class="result-panels">
+            @if (!IsReady)
+            {
+                <div class="skeleton" aria-hidden="true">
+                    <div class="skeleton__row"></div><div class="skeleton__row"></div><div class="skeleton__row"></div><div class="skeleton__row"></div><div class="skeleton__row"></div>
+                </div>
             }
             else
             {
-                <text>Loading the .NET regex engine…</text>
+                <div class="result-panel" role="tabpanel" id="panel-@ActiveTab" aria-labelledby="tab-@ActiveTab" tabindex="0">
+                    @if (ActiveTab == "replace" && string.IsNullOrEmpty(Replacement))
+                    {
+                        <EmptyState IconName="replace" Title="No replacement pattern" Code="${user} at ${domain}   ·   $1   ·   $$ for a literal $">
+                            Enter a replacement on the left to preview Regex.Replace for every test line.
+                        </EmptyState>
+                    }
+                    else if (State == RunState.Empty)
+                    {
+                        <EmptyState IconName="pen" Title="No pattern yet">Type a regular expression on the left or pick a sample. Results update as you type.</EmptyState>
+                    }
+                    else if (State == RunState.Error)
+                    {
+                        <EmptyState IconName="alert" Title="Fix the pattern to see results">@ErrorMessage. @(ParseError is null ? "" : "The problem is underlined in red in the pattern field.")</EmptyState>
+                    }
+                    else if (State == RunState.Timeout)
+                    {
+                        <EmptyState IconName="clock" Title="Matching was stopped">The engine gave up after 2 seconds. Simplify nested quantifiers or try the NonBacktracking option.</EmptyState>
+                    }
+                    else if (Result.NonEmptyLines == 0)
+                    {
+                        <EmptyState IconName="list" Title="No test strings">Add one test string per line in the editor on the left. Each line is matched on its own.</EmptyState>
+                    }
+                    else
+                    {
+                        switch (ActiveTab)
+                        {
+                            case "split": <SplitView Result="Result" /> break;
+                            case "table": <TableView Result="Result" Evaluator="Evaluator" /> break;
+                            case "groups": <GroupsView Result="Result" GroupCount="GroupCount" /> break;
+                            case "replace": <ReplaceView Result="Result" /> break;
+                            default: <MatchesView Result="Result" Evaluator="Evaluator" /> break;
+                        }
+                    }
+                </div>
             }
         </div>
-    </div>
-</div>
-</fieldset>
-<div class="mb-3">
-    <BSTabWrapper>
-        <BSNav IsTabs="true">
-            <BSNavItem IsActive="true">
-                <TabLabel>Matches</TabLabel>
-                <TabContent>
-                    <ul class="list-group">
-                        @foreach (var m in MatchedStrings)
-                        {
-                            <li class="list-group-item">@((MarkupString)m)</li>
-                        }
-                    </ul>
-                </TabContent>
-            </BSNavItem>
-            <BSNavItem>
-                <TabLabel>Split list</TabLabel>
-                <TabContent>
-                    <ul class="list-group">
-                        @foreach (var m in SplitList)
-                        {
-                            <li class="list-group-item">@((MarkupString)m)</li>
-                        }
-                    </ul>
-                </TabContent>
-            </BSNavItem>
-            <BSNavItem>
-                <TabLabel>Table</TabLabel>
-                <TabContent>
-                    <ul class="list-group">
-                        @foreach (var m in NotEmptyMatches)
-                        {
-                            <li class="list-group-item">
-                                <strong>@m.Key</strong>
-                            </li>
-                            @foreach (Match match in m.Value)
-                            {
-                                <li class="list-group-item">
-                                    <div class="hr-flex-container">
-                                        <span class="space-out">
-                                            Index: @match.Index
-                                        </span>
-                                        <span class="space-out">
-                                            Length: @match.Length
-                                        </span>
-                                        <span class="space-out">
-                                            Value: @match.Value
-                                        </span>
-                                    </div>
-                                </li>
-                            }
-                        }
-                    </ul>
-                </TabContent>
-            </BSNavItem>
-            <BSNavItem>
-                <TabLabel>Capture Groups</TabLabel>
-                <TabContent>
-                    @if (CaptureGroupData.Any())
-                    {
-                        <ul class="list-group">
-                            @foreach (var testData in CaptureGroupData)
-                            {
-                                <li class="list-group-item">
-                                    <strong>@testData.TestString</strong>
-                                </li>
-                                @foreach (var matchData in testData.Matches)
-                                {
-                                    <li class="list-group-item">
-                                        <div style="padding-left: 1rem;">
-                                            <strong>Match @matchData.MatchIndex</strong> (Index: @matchData.Index, Length: @matchData.Length)
-                                            <ul class="list-group" style="margin-top: 0.5rem;">
-                                                @foreach (var group in matchData.Groups)
-                                                {
-                                                    <li class="list-group-item">
-                                                        <div class="hr-flex-container">
-                                                            <span class="space-out">
-                                                                <strong>@group.Name:</strong>
-                                                            </span>
-                                                            <span class="space-out">
-                                                                "@group.Value"
-                                                            </span>
-                                                            <span class="space-out">
-                                                                (Index: @group.Index, Length: @group.Length)
-                                                            </span>
-                                                        </div>
-                                                    </li>
-                                                }
-                                            </ul>
-                                        </div>
-                                    </li>
-                                }
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <div class="alert alert-info" role="alert">
-                            No capture groups found. Use named groups like <code>(?&lt;name&gt;pattern)</code> or numbered groups <code>(pattern)</code> to see capture details here.
-                        </div>
-                    }
-                </TabContent>
-            </BSNavItem>
-            <BSNavItem>
-                <TabLabel>Replace</TabLabel>
-                <TabContent>
-                    @if (ReplacedStrings.Any())
-                    {
-                        <ul class="list-group">
-                            @foreach (var item in ReplacedStrings)
-                            {
-                                <li class="list-group-item">
-                                    <div style="margin-bottom: 0.5rem;">
-                                        <strong>Original:</strong> <code>@item.Key</code>
-                                    </div>
-                                    <div>
-                                        <strong>Replaced:</strong> <code>@item.Value</code>
-                                    </div>
-                                </li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <div class="alert alert-info" role="alert">
-                            Enter a replacement pattern and click the <strong>Replace</strong> button to see results.
-                        </div>
-                    }
-                </TabContent>
-            </BSNavItem>
-        </BSNav>
-        <BSTabRender />
-    </BSTabWrapper>
+    </section>
 </div>
 
 @code {
-    const string REGEX_SESSION_STORAGE_KEY = nameof(REGEX_SESSION_STORAGE_KEY);
-    const string TESTS_SESSION_STORAGE_KEY = nameof(TESTS_SESSION_STORAGE_KEY);
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
-
-    protected string Tests { get; set; }
-    protected string RegexText { get; set; }
-    protected string SelectedSample { get; set; }
-    protected string ReplacementPattern { get; set; }
-    protected bool IgnoreCase { get; set; }
-    protected bool Multiline { get; set; }
-    protected bool Singleline { get; set; }
-    protected bool AnyNewLine { get; set; }
-    protected bool NonBacktracking { get; set; }
-    protected bool ExplicitCapture { get; set; }
-    protected bool IgnorePatternWhitespace { get; set; }
-    protected bool RightToLeft { get; set; }
-    protected bool CultureInvariant { get; set; }
-    protected bool ECMAScript { get; set; }
-    protected bool ShowAdvancedOptions { get; set; }
-    protected int AdvancedOptionsCount =>
-        new[] { AnyNewLine, NonBacktracking, ExplicitCapture, IgnorePatternWhitespace, RightToLeft, CultureInvariant, ECMAScript }
-            .Count(b => b);
-    protected IEnumerable<string> MatchedStrings { get; set; } = new List<string>();
-    protected IEnumerable<string> SplitList { get; set; } = new List<string>();
-    protected IEnumerable<KeyValuePair<string, MatchCollection>> NotEmptyMatches { get; set; } = new Dictionary<string, MatchCollection>();
-    protected IDictionary<string, string> ReplacedStrings { get; set; } = new Dictionary<string, string>();
-    protected List<TestCaptureGroupData> CaptureGroupData { get; set; } = new();
-    protected string Message { get; set; }
-
-    private Regex testRegex;
-    // RegexOptionsData is a record, so the tuple compares every option by value.
-    private (string RegexText, RegexOptionsData Options)? prevRegexConfig;
-
-    // Data structures for capture groups display
-    public class TestCaptureGroupData
+    private static string FlagsLabel(string letters, string extras)
     {
-        public string TestString { get; set; }
-        public List<MatchCaptureGroupData> Matches { get; set; } = new();
+        var all = (letters + " " + extras).Trim();
+        return "Active options: " + (all.Length == 0 ? "none" : all);
     }
 
-    public class MatchCaptureGroupData
-    {
-        public int MatchIndex { get; set; }
-        public int Index { get; set; }
-        public int Length { get; set; }
-        public List<CaptureGroupInfo> Groups { get; set; } = new();
-    }
-
-    public class CaptureGroupInfo
-    {
-        public string Name { get; set; }
-        public string Value { get; set; }
-        public int Index { get; set; }
-        public int Length { get; set; }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        // While prerendering on the server there is no browser storage (no JS interop).
-        if (!RendererInfo.IsInteractive)
-            return;
-
-        RegexText = await LocalStorage.GetStringAsync(REGEX_SESSION_STORAGE_KEY) ?? string.Empty;
-        Tests = await LocalStorage.GetStringAsync(TESTS_SESSION_STORAGE_KEY) ?? string.Empty;
-        SelectedSample = string.Empty;
-        var options = regexOptionsService.Deserialize(await LocalStorage.GetStringAsync("REGEX_OPTIONS"));
-        if (options != null)
+    private string StatusKind => !IsReady ? "loading"
+        : Flash is not null ? "success"
+        : State switch
         {
-            ApplyOptions(options);
-        }
-        // Don't hide active advanced options behind a collapsed section.
-        ShowAdvancedOptions = AdvancedOptionsCount > 0;
-    }
+            RunState.Empty => "empty",
+            RunState.Error => "error",
+            RunState.Timeout => "timeout",
+            _ => Result.TotalMatches > 0 ? "ok" : "nomatch",
+        };
 
-    private RegexOptionsData CurrentOptions() => new(
-        IgnoreCase, Multiline, Singleline,
-        AnyNewLine: AnyNewLine,
-        NonBacktracking: NonBacktracking,
-        ExplicitCapture: ExplicitCapture,
-        IgnorePatternWhitespace: IgnorePatternWhitespace,
-        RightToLeft: RightToLeft,
-        CultureInvariant: CultureInvariant,
-        ECMAScript: ECMAScript);
-
-    private void ApplyOptions(RegexOptionsData options)
-    {
-        IgnoreCase = options.IgnoreCase;
-        Multiline = options.Multiline;
-        Singleline = options.Singleline;
-        AnyNewLine = options.AnyNewLine;
-        NonBacktracking = options.NonBacktracking;
-        ExplicitCapture = options.ExplicitCapture;
-        IgnorePatternWhitespace = options.IgnorePatternWhitespace;
-        RightToLeft = options.RightToLeft;
-        CultureInvariant = options.CultureInvariant;
-        ECMAScript = options.ECMAScript;
-    }
-
-    private async Task OnFormKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+    private string StatusMain => !IsReady ? "Loading the .NET regex engine…"
+        : Flash is { } flash ? flash.Main
+        : State switch
         {
-            await Test_Click(null);
-        }
-    }
+            RunState.Empty => "Enter a pattern to start",
+            RunState.Error => $"Invalid pattern: {ErrorMessage}",
+            RunState.Timeout => "Expression timed out: possible catastrophic backtracking",
+            _ when Result.TotalMatches == 0 => "No matches",
+            _ => $"{Fmt.Plural(Result.TotalMatches, "match", "matches")} in {Result.ElapsedMilliseconds} ms",
+        };
 
-    private async Task OnSampleChanged(ChangeEventArgs e)
-    {
-        SelectedSample = e?.Value?.ToString() ?? string.Empty;
-
-        var pattern = GetPatternForSample(SelectedSample);
-        if (!string.IsNullOrEmpty(pattern))
+    private string StatusSub => !IsReady ? "Downloading the WebAssembly runtime. The controls unlock when it's ready."
+        : Flash is { } flash ? flash.Sub
+        : State switch
         {
-            RegexText = pattern;
-            
-            // Auto-populate test data if Tests field is empty
-            if (string.IsNullOrWhiteSpace(Tests))
-            {
-                Tests = GetSampleDataForSample(SelectedSample);
-            }
-            
-            // Force recompile next Test_Click by resetting prev config
-            prevRegexConfig = null;
-            await Test_Click(null);
-        }
-    }
-
-    private static readonly Dictionary<string, (string Pattern, string SampleData)> SamplePatterns = new()
-    {
-        { "Email", (SampleRegexLibrary.EmailPattern, SampleRegexLibrary.EmailSampleData) },
-        { "Phone", (SampleRegexLibrary.PhonePattern, SampleRegexLibrary.PhoneSampleData) },
-        { "Url", (SampleRegexLibrary.UrlPattern, SampleRegexLibrary.UrlSampleData) }
-    };
-
-    private static string GetPatternForSample(string sample)
-    {
-        if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
-        return SamplePatterns.TryGetValue(sample, out var value) ? value.Pattern : string.Empty;
-    }
-
-    private static string GetSampleDataForSample(string sample)
-    {
-        if (string.IsNullOrWhiteSpace(sample)) return string.Empty;
-        return SamplePatterns.TryGetValue(sample, out var value) ? value.SampleData : string.Empty;
-    }
-
-    protected async Task Test_Click(object e)
-    {
-        if (string.IsNullOrEmpty(RegexText))
-            return;
-
-        var currentOptions = CurrentOptions();
-        // Use a tuple-based comparison for change detection to avoid delimiter issues
-        var currentConfig = (RegexText, currentOptions);
-        if (prevRegexConfig != currentConfig)
-        {
-            Console.WriteLine("Changing RegEx");
-            // TryCreateRegex validates option combinations and converts parse errors, invalid
-            // combinations and NotSupportedException (NonBacktracking + unsupported constructs)
-            // into an error result. Every regex keeps the 2 s match timeout.
-            var result = regexOptionsService.TryCreateRegex(RegexText, currentOptions, RegexTimeout);
-            if (!result.Success)
-            {
-                Console.WriteLine($"Failed to build a RegEx: {result.Error}");
-                // Drop the previous regex and its results so Replace, the result tabs and the
-                // exports never use a regex built from a different pattern or options.
-                ClearResults();
-                Message = result.ParseError is { } parseEx
-                    ? $"Failed to parse an expression 😒: <b>{parseEx.Error}</b> at pos <b>{parseEx.Offset}</b>."
-                    : $"😒 {System.Net.WebUtility.HtmlEncode(result.Error)}";
-                return;
-            }
-
-            testRegex = result.Regex;
-            prevRegexConfig = currentConfig;
-
-            await LocalStorage.SetStringAsync(REGEX_SESSION_STORAGE_KEY, RegexText);
-            await LocalStorage.SetStringAsync("REGEX_OPTIONS", regexOptionsService.Serialize(currentOptions));
-        }
-
-        try
-        {
-            var tests = Tests?
-                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct()
-                .ToList();
-
-            var (elapsedMilliseconds, matches) = regexService.GetMatches(tests, testRegex);
-
-            NotEmptyMatches = matches
-                .Where(kvp => kvp.Value.Count > 0)
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            Message = $"{NotEmptyMatches.Count()} matches in {elapsedMilliseconds} ms";
-
-            // Only show inputs that have matches
-            MatchedStrings = matches
-                .Where(mc => mc.Value.Count > 0)
-                .Select(mc => htmlHelperService.GetMarkedSpans(mc.Key, mc.Value, "mark-yellow"))
-                .ToList();
-
-            // Only show inputs that have split results (where split actually occurred).
-            // Materialised here so Regex.Split runs inside this try block: a timeout during
-            // rendering would bypass the RegexMatchTimeoutException handler below.
-            SplitList = regexService.GetSplitList(tests, testRegex)
-                .Select(m => htmlHelperService.GetDelimeteredString(m, " <span class='oi oi-pin' aria-hidden='true'></span> "))
-                .ToList();
-            
-            // Extract capture group data
-            CaptureGroupData = ExtractCaptureGroupData(matches);
-            
-            await LocalStorage.SetStringAsync(TESTS_SESSION_STORAGE_KEY, Tests);
-        }
-        catch (RegexMatchTimeoutException timeoutEx)
-        {
-            Console.WriteLine($"RegEx timed out: {timeoutEx.Message}");
-            ClearResultCollections();
-            Message = "⏱ Expression timed out - possible catastrophic backtracking";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Something went wrong... {ex.Message}");
-            ClearResultCollections();
-            Message = "Error evaluating expression ☠";
-        }
-    }
-
-    private void ClearResults()
-    {
-        testRegex = null;
-        prevRegexConfig = null;
-        ClearResultCollections();
-    }
-
-    private void ClearResultCollections()
-    {
-        NotEmptyMatches = new Dictionary<string, MatchCollection>();
-        MatchedStrings = new List<string>();
-        SplitList = new List<string>();
-        CaptureGroupData = new List<TestCaptureGroupData>();
-        ReplacedStrings = new Dictionary<string, string>();
-    }
-
-    private List<TestCaptureGroupData> ExtractCaptureGroupData(IDictionary<string, MatchCollection> matches)
-    {
-        var result = new List<TestCaptureGroupData>();
-
-        foreach (var kvp in matches.Where(m => m.Value.Count > 0))
-        {
-            var testData = new TestCaptureGroupData
-            {
-                TestString = kvp.Key
-            };
-
-            int matchIndex = 0;
-            foreach (Match match in kvp.Value)
-            {
-                var matchData = new MatchCaptureGroupData
-                {
-                    MatchIndex = matchIndex++,
-                    Index = match.Index,
-                    Length = match.Length
-                };
-
-                // Get group names from the regex
-                var groupNames = testRegex.GetGroupNames();
-
-                foreach (var groupName in groupNames)
-                {
-                    var group = match.Groups[groupName];
-                    if (group.Success)
-                    {
-                        matchData.Groups.Add(new CaptureGroupInfo
-                        {
-                            Name = groupName,
-                            Value = group.Value,
-                            Index = group.Index,
-                            Length = group.Length
-                        });
-                    }
-                }
-
-                // Only add match data if it has groups (besides the default "0" group)
-                if (matchData.Groups.Count > 0)
-                {
-                    testData.Matches.Add(matchData);
-                }
-            }
-
-            // Only add test data if it has matches with groups
-            if (testData.Matches.Count > 0)
-            {
-                result.Add(testData);
-            }
-        }
-
-        return result;
-    }
-
-    protected async Task Replace_Click(object e)
-    {
-        if (string.IsNullOrEmpty(RegexText) || string.IsNullOrEmpty(ReplacementPattern))
-            return;
-
-        // Rebuild first if the pattern or options changed since the last Test, so Replace never
-        // runs a regex built from different input. A failed build leaves testRegex null.
-        if (prevRegexConfig != (RegexText, CurrentOptions()))
-        {
-            await Test_Click(null);
-        }
-        if (testRegex == null)
-            return;
-
-        try
-        {
-            var tests = Tests?
-                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct();
-
-            ReplacedStrings = regexService.GetReplacedStrings(tests, testRegex, ReplacementPattern);
-            Message = $"Replaced in {ReplacedStrings.Count} test strings";
-        }
-        catch (RegexMatchTimeoutException timeoutEx)
-        {
-            Console.WriteLine($"RegEx timed out: {timeoutEx.Message}");
-            Message = "⏱ Expression timed out - possible catastrophic backtracking";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Replace error: {ex.Message}");
-            Message = "Error during replace operation ☠";
-        }
-    }
-
-    private async Task ExportAsJson(object e)
-    {
-        try
-        {
-            var exportData = NotEmptyMatches.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value.Cast<Match>().Select(m => new
-                {
-                    Value = m.Value,
-                    Index = m.Index,
-                    Length = m.Length,
-                    Groups = m.Groups.Cast<Group>().Skip(1).Select(g => new
-                    {
-                        Value = g.Value,
-                        Index = g.Index,
-                        Length = g.Length
-                    }).ToList()
-                }).ToList()
-            );
-
-            var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
-
-            await JS.InvokeVoidAsync("downloadFile", "matches.json", json, "application/json");
-            Message = "✓ Exported matches as JSON";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Export JSON error: {ex.Message}");
-            Message = "Error exporting JSON ☠";
-        }
-    }
-
-    private async Task ExportAsCsv(object e)
-    {
-        try
-        {
-            var csv = new System.Text.StringBuilder();
-            csv.AppendLine("Test String,Match Value,Match Index,Match Length");
-
-            foreach (var kvp in NotEmptyMatches)
-            {
-                foreach (Match match in kvp.Value)
-                {
-                    csv.AppendLine($"\"{EscapeCsv(kvp.Key)}\",\"{EscapeCsv(match.Value)}\",{match.Index},{match.Length}");
-                }
-            }
-
-            await JS.InvokeVoidAsync("downloadFile", "matches.csv", csv.ToString(), "text/csv");
-            Message = "✓ Exported matches as CSV";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Export CSV error: {ex.Message}");
-            Message = "Error exporting CSV ☠";
-        }
-    }
-
-    private async Task ExportAsText(object e)
-    {
-        try
-        {
-            var text = new System.Text.StringBuilder();
-            text.AppendLine($"Regex Pattern: {RegexText}");
-            text.AppendLine($"Total Matches: {NotEmptyMatches.Sum(kvp => kvp.Value.Count())}");
-            text.AppendLine($"Test Strings with Matches: {NotEmptyMatches.Count()}");
-            text.AppendLine();
-
-            foreach (var kvp in NotEmptyMatches)
-            {
-                text.AppendLine($"Test String: {kvp.Key}");
-                text.AppendLine($"Matches ({kvp.Value.Count}):");
-                
-                foreach (Match match in kvp.Value)
-                {
-                    text.AppendLine($"  - Value: \"{match.Value}\" (Index: {match.Index}, Length: {match.Length})");
-                }
-                
-                text.AppendLine();
-            }
-
-            await JS.InvokeVoidAsync("downloadFile", "matches.txt", text.ToString(), "text/plain");
-            Message = "✓ Exported matches as Text";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Export Text error: {ex.Message}");
-            Message = "Error exporting Text ☠";
-        }
-    }
-
-    private static string EscapeCsv(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-        
-        return value.Replace("\"", "\"\"");
-    }
+            RunState.Empty => "Matches appear here as you type.",
+            RunState.Error => ParseError is null ? "" : $"At offset {ParseError.Offset} of the pattern.",
+            RunState.Timeout => "Stopped after the 2 s match timeout. No results are shown.",
+            _ => $"{Result.MatchedLines} of {Fmt.Plural(Result.NonEmptyLines, "line", "lines")} matched · {Fmt.Plural(GroupCount, "capture group", "capture groups")}",
+        };
 }
-

@@ -4,11 +4,14 @@
           Description="Free online .NET regular expression tester. Test C# regex patterns, options, matches, capture groups, split and replace with the real .NET Regex engine, running in your browser via WebAssembly. Your data never leaves your browser."
           Path="/" />
 
-<h1 class="page-title">.NET Regex Tester</h1>
-<p class="text-muted">
-    Test C# regular expressions on the real .NET <code>System.Text.RegularExpressions</code> engine.
-    It runs in your browser with WebAssembly, so your patterns and test data are never sent to a server.
-</p>
+<section class="intro" aria-labelledby="introTitle">
+    <h1 class="intro__title" id="introTitle">.NET Regex Tester</h1>
+    <p class="intro__text">
+        Test C# regular expressions on the real .NET <code>System.Text.RegularExpressions</code> engine.
+        It runs in your browser with WebAssembly, so your patterns and test data never leave your browser.
+    </p>
+    <span class="privacy-chip"><Icon Name="shield" />Runs locally</span>
+</section>
 
 @* The only interactive part of the site. Prerendered (disabled) so the form is visible and indexable
    before the .NET runtime has loaded. *@

@@ -1,0 +1,27 @@
+<div class="status-bar" data-state="@Kind" role="status" aria-live="polite">
+    <span class="status-bar__icon">
+        @switch (Kind)
+        {
+            case "loading": <Icon Name="loader" Size="18" Class="spin" /> break;
+            case "ok": case "success": <Icon Name="check-circle" Size="18" /> break;
+            case "nomatch": <Icon Name="minus-circle" Size="18" /> break;
+            case "error": <Icon Name="alert" Size="18" /> break;
+            case "timeout": <Icon Name="clock" Size="18" /> break;
+            default: <Icon Name="pen" Size="18" /> break;
+        }
+    </span>
+    <span class="status-bar__text">
+        <span class="status-bar__main">@Main</span>
+        @if (!string.IsNullOrEmpty(Sub))
+        {
+            <span class="status-bar__sub">@Sub</span>
+        }
+    </span>
+    <span class="status-bar__engine" title="Engine">.NET · WASM</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Kind { get; set; } = "";
+    [Parameter, EditorRequired] public string Main { get; set; } = "";
+    [Parameter] public string? Sub { get; set; }
+}

@@ -1,0 +1,67 @@
+@using BlazorWasmRegex.Shared.Models
+@foreach (var line in Result.Lines.Where(l => !l.IsEmpty))
+{
+    var changed = line.Matches.Count > 0 && line.Replace is not null;
+    <div class="test-block">
+        <LineHead Line="line">
+            @if (changed)
+            {
+                @Fmt.Plural(line.Matches.Count, "replacement", "replacements")
+            }
+            else
+            {
+                <span class="unchanged-tag">Unchanged</span>
+            }
+        </LineHead>
+        @if (changed)
+        {
+            <div class="replace-row">
+                <span class="replace-row__label">Original</span>
+                <span class="replace-row__val">@foreach (var piece in Original(line))
+                    {
+                        if (piece.Deleted)
+                        {
+                            <span class="del">@piece.Text</span>
+                        }
+                        else
+                        {
+                            @piece.Text
+                        }
+                    }</span>
+                <span></span>
+            </div>
+            <div class="replace-row replace-row--after">
+                <span class="replace-row__label">Replaced</span>
+                <span class="replace-row__val">@foreach (var s in line.Replace!.Segments)
+                    {
+                        if (s.Inserted)
+                        {
+                            <span class="ins">@s.Text</span>
+                        }
+                        else
+                        {
+                            @s.Text
+                        }
+                    }</span>
+                <CopyButton Value="@line.Replace.Output" What="@($"replaced line {line.Number}")" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public EvaluationResult Result { get; set; } = default!;
+
+    // The original line with each match marked as deleted.
+    private static IEnumerable<(string Text, bool Deleted)> Original(LineResult line)
+    {
+        var pos = 0;
+        foreach (var m in line.Matches.OrderBy(m => m.Index))
+        {
+            if (m.Index > pos) yield return (line.Text[pos..m.Index], false);
+            if (m.Length > 0) yield return (m.Value, true);
+            pos = m.Index + m.Length;
+        }
+        if (pos < line.Text.Length) yield return (line.Text[pos..], false);
+    }
+}

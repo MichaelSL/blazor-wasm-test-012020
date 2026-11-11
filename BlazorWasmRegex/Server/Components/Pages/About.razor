@@ -4,7 +4,8 @@
           Description="About the .NET Regex Tester: a free online tool that runs the real .NET (C#) regular expression engine in your browser with Blazor WebAssembly, so your test data never leaves your machine."
           Path="/about" />
 
-<h1 class="page-title">About the .NET Regex Tester</h1>
+<article class="prose">
+<h1>About the .NET Regex Tester</h1>
 
 <p>
     This is a free online tester for .NET regular expressions. Patterns run on the real
@@ -12,23 +13,24 @@
     so the results match what your C# code will do.
 </p>
 
-<h2 class="h5 mt-4">Your data stays in your browser</h2>
+<h2>Your data stays in your browser</h2>
 <p>
     All matching happens client-side. Your pattern and test text are never sent to a server. The app only
     remembers your last pattern, test strings and options in your browser's local storage.
 </p>
 
-<h2 class="h5 mt-4">Features</h2>
+<h2>Features</h2>
 <ul>
-    <li>Highlighted matches, a match table and capture groups (including named groups)</li>
+    <li>Live results as you type, with matches highlighted in the test strings and color-coded capture groups (including named groups)</li>
     <li>All <code>RegexOptions</code>: IgnoreCase, Multiline, Singleline, ExplicitCapture, IgnorePatternWhitespace,
         RightToLeft, CultureInvariant, ECMAScript, NonBacktracking and AnyNewLine</li>
     <li><code>Regex.Split</code> and <code>Regex.Replace</code> with substitutions such as <code>$1</code> and <code>${name}</code></li>
-    <li>Sample patterns, and export of matches as JSON, CSV or text</li>
+    <li>Sample patterns, a clickable quick reference, copy buttons, and export of matches as JSON, CSV or text</li>
+    <li>Light and dark themes</li>
     <li>A 2-second match timeout that stops runaway patterns (catastrophic backtracking) instead of freezing the page</li>
 </ul>
 
-<h2 class="h5 mt-4">Hosting</h2>
+<h2>Hosting</h2>
 <p>
     This app is hosted on a
     <a href="http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero.html">tiny ARMv7 Linux server</a>
@@ -36,4 +38,5 @@
     out files; all the regex work is done by your browser.
 </p>
 
-<p><a class="btn btn-primary" href="">Open the regex tester</a></p>
+<p><a class="btn btn--primary" href="">Open the regex tester</a></p>
+</article>

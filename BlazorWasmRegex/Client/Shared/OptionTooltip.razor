@@ -1,0 +1,13 @@
+@using BlazorWasmRegex.Shared.Models
+<span class="tooltip" role="tooltip" id="tip-@Option.Id">
+    <strong>RegexOptions.@Option.Id</strong>@Option.Tip
+    @if (Reason is not null)
+    {
+        <span class="tooltip__reason">@Reason</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public RegexOptionInfo Option { get; set; } = default!;
+    [Parameter] public string? Reason { get; set; }
+}

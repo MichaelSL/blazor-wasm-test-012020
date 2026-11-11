@@ -1,0 +1,10 @@
+@* An icon from the SVG sprite in App.razor (<symbol id="i-{Name}">). Decorative unless Label is set. *@
+<svg class="od-icon @Class" style="@(Size > 0 ? $"--od-icon-size:{Size}px" : null)" aria-hidden="@(Label is null ? "true" : null)"
+     role="@(Label is null ? null : "img")" aria-label="@Label" focusable="false"><use href="#i-@Name" /></svg>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public int Size { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Label { get; set; }
+}

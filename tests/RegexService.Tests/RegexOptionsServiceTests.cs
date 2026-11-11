@@ -239,5 +239,60 @@ namespace RegexService.Tests
         {
             Assert.Null(_service.Deserialize(stored));
         }
-    }
+    
+        [Theory]
+        [InlineData("RightToLeft", "NonBacktracking")]
+        [InlineData("AnyNewLine", "NonBacktracking")]
+        [InlineData("NonBacktracking", "RightToLeft")]
+        [InlineData("Singleline", "ECMAScript")]
+        [InlineData("ECMAScript", "ExplicitCapture")]
+        public void GetDisabledReason_LocksConflictingOptions(string enabled, string candidate)
+        {
+            var data = RegexOptionsData.Default.With(enabled, true);
+
+            var reason = _service.GetDisabledReason(candidate, data);
+
+            Assert.False(string.IsNullOrEmpty(reason));
+        }
+
+        [Theory]
+        [InlineData("IgnoreCase")]
+        [InlineData("Multiline")]
+        [InlineData("CultureInvariant")]
+        public void GetDisabledReason_EcmaScriptAllowsItsCompanions(string candidate)
+        {
+            var data = RegexOptionsData.Default with { ECMAScript = true };
+            Assert.Null(_service.GetDisabledReason(candidate, data));
+        }
+
+        [Fact]
+        public void GetDisabledReason_NeverLocksAnOptionThatIsOn()
+        {
+            // An invalid combination loaded from storage must still be fixable by unticking.
+            var data = RegexOptionsData.Default with { NonBacktracking = true, RightToLeft = true };
+            Assert.Null(_service.GetDisabledReason("NonBacktracking", data));
+            Assert.Null(_service.GetDisabledReason("RightToLeft", data));
+        }
+
+        [Fact]
+        public void GetDisabledReason_EveryOptionIsFreeByDefault()
+        {
+            foreach (var option in RegexOptionInfo.All)
+            {
+                Assert.Null(_service.GetDisabledReason(option.Id, RegexOptionsData.Default));
+            }
+        }
+
+        [Fact]
+        public void RegexOptionInfo_CoversEveryOptionsDataFlag()
+        {
+            var all = RegexOptionsData.Default;
+            foreach (var option in RegexOptionInfo.All)
+            {
+                all = all.With(option.Id, true);
+                Assert.True(all.IsSet(option.Id));
+            }
+            Assert.Equal(all.ToString().Split("True").Length - 1, RegexOptionInfo.All.Count);
+        }
+}
 }
