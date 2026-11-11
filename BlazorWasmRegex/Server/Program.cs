@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -31,11 +33,27 @@ app.UseRouting();
 app.MapStaticAssets();
 app.MapRazorPages();
 
-// Client-side routes (and "/") get index.html. It references fingerprinted framework files,
-// so it must be revalidated on every load rather than heuristically cached.
+// index.html references fingerprinted framework files, so it must be revalidated on every
+// load rather than heuristically cached.
+static void NoCache(StaticFileResponseContext ctx) =>
+    ctx.Context.Response.Headers.CacheControl = "no-cache";
+
+// Known client-side routes (keep in sync with the @page directives in BlazorWasmRegex/Client/Pages)
+// get index.html with 200.
+foreach (var route in new[] { "/", "/about" })
+{
+    app.MapFallbackToFile(route, "index.html", new StaticFileOptions { OnPrepareResponse = NoCache });
+}
+
+// Any other path still gets index.html, so the Blazor router shows its "not found" page, but with
+// a 404 status, so search engines don't index unknown URLs as duplicates of the home page.
 app.MapFallbackToFile("index.html", new StaticFileOptions
 {
-    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache"
+    OnPrepareResponse = ctx =>
+    {
+        NoCache(ctx);
+        ctx.Context.Response.StatusCode = StatusCodes.Status404NotFound;
+    }
 });
 
 app.Run();

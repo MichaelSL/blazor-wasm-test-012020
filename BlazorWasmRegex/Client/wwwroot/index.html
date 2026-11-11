@@ -4,7 +4,16 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Blazor WASM Regex Test</title>
+    <title>.NET Regex Tester – test C# regular expressions online</title>
+    <meta name="description" content="Free online .NET regular expression tester. Test C# regex patterns, options, matches, groups, split and replace with the real .NET Regex engine running in your browser via WebAssembly. Your data never leaves your browser." />
+    <meta name="theme-color" content="#03173d" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content=".NET Regex Tester" />
+    <meta property="og:title" content=".NET Regex Tester – test C# regular expressions online" />
+    <meta property="og:description" content="Test C# regex patterns with the real .NET Regex engine, running entirely in your browser via WebAssembly." />
+    <meta property="og:url" content="https://dotnet-regex.com/" />
+    <meta property="og:image" content="https://dotnet-regex.com/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
     <base href="/" />
     <link rel="preload" id="webassembly" />
     <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
@@ -21,6 +30,23 @@
             <circle r="40%" cx="50%" cy="50%" />
         </svg>
         <div class="loading-progress-text"></div>
+        <!-- Static content for crawlers and link previews that don't run WebAssembly.
+             Blazor replaces everything inside <app> once it starts. -->
+        <div class="static-intro">
+            <h1>.NET Regex Tester</h1>
+            <p>
+                Test .NET (C#) regular expressions online. Patterns run on the real
+                <code>System.Text.RegularExpressions</code> engine, compiled to WebAssembly,
+                so all your test data stays in your browser.
+            </p>
+            <ul>
+                <li>Highlighted matches, a match table and capture groups (including named groups)</li>
+                <li>All RegexOptions: IgnoreCase, Multiline, Singleline, ExplicitCapture, IgnorePatternWhitespace, RightToLeft, CultureInvariant, ECMAScript, NonBacktracking and AnyNewLine</li>
+                <li>Regex.Split and Regex.Replace with substitutions such as <code>$1</code> and <code>${name}</code></li>
+                <li>Sample patterns, and export of matches as JSON, CSV or text</li>
+            </ul>
+            <noscript>This tool needs JavaScript and WebAssembly enabled.</noscript>
+        </div>
     </app>
 
     <div id="blazor-error-ui">
