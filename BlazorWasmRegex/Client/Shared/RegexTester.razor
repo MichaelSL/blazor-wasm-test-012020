@@ -333,7 +333,8 @@
             try
             {
                 Console.WriteLine("Changing RegEx");
-                var options = RegexOptions.Compiled;
+                // RegexOptions.Compiled is intentionally omitted: WASM only has the regex interpreter.
+                var options = RegexOptions.None;
                 if (IgnoreCase) options |= RegexOptions.IgnoreCase;
                 if (Multiline) options |= RegexOptions.Multiline;
                 if (Singleline) options |= RegexOptions.Singleline;

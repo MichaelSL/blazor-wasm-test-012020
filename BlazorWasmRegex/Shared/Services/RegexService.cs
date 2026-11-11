@@ -12,11 +12,18 @@ namespace BlazorWasmRegex.Shared.Services
     {
         public (long, IDictionary<string, MatchCollection>) GetMatches(IEnumerable<string> tests, Regex testRegex)
         {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            var matches = tests.ToDictionary(input => input, input => testRegex.Matches(input));
-            stopwatch.Stop();
-            return (stopwatch.ElapsedMilliseconds, matches);
+            var start = Stopwatch.GetTimestamp();
+            var matches = tests.ToDictionary(input => input, input =>
+            {
+                // MatchCollection is lazy: reading Count forces the whole scan here, so the
+                // elapsed time covers the real matching and RegexMatchTimeoutException
+                // surfaces from this method rather than later during rendering.
+                var collection = testRegex.Matches(input);
+                _ = collection.Count;
+                return collection;
+            });
+            var elapsed = Stopwatch.GetElapsedTime(start);
+            return ((long)elapsed.TotalMilliseconds, matches);
         }
 
         public IEnumerable<string> GetMatchedStrings(IEnumerable<string> tests, Regex testRegex, Func<Match, string> highlighter = null)

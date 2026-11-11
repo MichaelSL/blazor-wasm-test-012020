@@ -28,6 +28,30 @@ namespace RegexService.Tests
         }
 
         [Fact]
+        public void GetMatches_EvaluatesMatchesEagerly_SoTimeoutSurfacesFromGetMatches()
+        {
+            // Catastrophic backtracking: nested quantifier that cannot match the trailing '!'.
+            var tests = new[] { new string('a', 40) + "!" };
+            var regex = new Regex("^(a+)+$", RegexOptions.None, TimeSpan.FromMilliseconds(1));
+
+            // MatchCollection is lazy; if GetMatches did not force evaluation, it would return
+            // without throwing and the timeout would only happen when the caller enumerated it.
+            Assert.Throws<RegexMatchTimeoutException>(() => _service.GetMatches(tests, regex));
+        }
+
+        [Fact]
+        public void GetMatches_ReturnsFullyEvaluatedCollections()
+        {
+            var tests = new[] { "a1b2c3", "none" };
+            var regex = new Regex("\\d");
+
+            var (_, matches) = _service.GetMatches(tests, regex);
+
+            Assert.Equal(new[] { "1", "2", "3" }, matches["a1b2c3"].Select(m => m.Value));
+            Assert.Empty(matches["none"]);
+        }
+
+        [Fact]
         public void GetMatchedStrings_FiltersNonMatchingInputs()
         {
             var tests = new[] { "foo", "bar", "foobar" };

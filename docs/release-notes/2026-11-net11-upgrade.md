@@ -75,6 +75,21 @@ Release publish of `BlazorWasmRegex.Server`, `wwwroot/_framework`:
 
 The result tabs (Matches / Split list / Table / Capture Groups / Replace) never worked as tabs. `RegexTester.razor` used `BSTabGroup`, `BSTabList`, `BSTab`, `BSTabLabel`, `BSTabContent` and `BSTabSelectedContent`, which don't exist in BlazorStrap 5.2. Razor emitted them as unknown HTML elements (36 `RZ10012` warnings), so every panel rendered stacked with no tab strip. This predates .NET 11, and the browser test made it visible. The markup now uses the real BlazorStrap 5 API: `BSTabWrapper` > `BSNav IsTabs="true"` > `BSNavItem` with `TabLabel`/`TabContent`, plus `BSTabRender`, with Matches active by default. The build now has zero Razor warnings. (This was Task 1 in the removed `docs/regex-tester-improvements.md`.)
 
+## Follow-up modernisation
+
+### Step 1: low-risk cleanup
+
+- **Tests on xUnit v3:** `xunit` 2.6.2 (deprecated) → `xunit.v3` 4.0.3, `xunit.runner.visualstudio` 2.5.7 → 4.0.1, `Microsoft.NET.Test.Sdk` 17.11.1 → 18.11.1. No test API changes were needed. xunit.v3 4.x turns on Microsoft.Testing.Platform v2 by default, and the VSTest-based `dotnet test` (still the SDK default) refuses to run MTP v2 projects ("Testing with VSTest target is no longer supported…"). The test project therefore sets `<IsTestingPlatformApplication>false</IsTestingPlatformApplication>` and stays on VSTest through `xunit.runner.visualstudio`. Moving the repo to MTP mode (a `global.json` with `"test": { "runner": "Microsoft.Testing.Platform" }`) is a possible later step.
+- **DevServer removed:** the Client no longer references `Microsoft.AspNetCore.Components.WebAssembly.DevServer`, and `Client/Properties/launchSettings.json` is gone. Its profiles started the client on its own, which needed DevServer. The Server project hosts the client, so run the app with `dotnet run --project BlazorWasmRegex/Server`.
+- **Match timing fix:** `RegexService.GetMatches` timed `Regex.Matches()`, but `MatchCollection` is lazy. The reported time was about 0 ms, and the real matching (and any `RegexMatchTimeoutException`) happened later during rendering. It now reads `Count` on each collection inside the timed block, using `Stopwatch.GetTimestamp`/`GetElapsedTime`. A new test checks that a catastrophic-backtracking pattern with a 1 ms timeout throws from `GetMatches` itself. The test fails against the old code.
+- **`RegexOptions.Compiled` removed** from `RegexTester.razor`. It has no effect in WASM, which only has the regex interpreter. The 2 s `RegexTimeout` is unchanged.
+- **Server:** removed the unused `AddControllersWithViews()`/`MapControllers()`, since the project has no controllers. Razor Pages (the Error page) and static file serving are unchanged.
+- **Verified:**
+  - `dotnet build BlazorWasmRegex2.sln -c Release` gives 0 warnings and 0 errors.
+  - `dotnet test tests/RegexService.Tests` passes 7/7.
+  - `./build.sh -Target Test` succeeds and runs the 7 tests.
+  - `dotnet run --project BlazorWasmRegex/Server` (Development profile) serves `/` and `/_framework/blazor.webassembly.js` with HTTP 200.
+
 ## Known issues and follow-ups
 
 - **Harmless NUKE warning:** an "Exception was suppressed … NuGet.Frameworks 7.11.0.0" message appears during NUKE runs. Nuke's bundled NuGet assemblies are older than the .NET 11 SDK's MSBuild; Nuke catches the exception and the build succeeds. It should go away when Nuke ships a .NET 11-aware release.
