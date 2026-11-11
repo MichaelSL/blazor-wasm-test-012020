@@ -10,7 +10,7 @@ on:
     - cron: '17 3 * * 0'
   workflow_dispatch:
     inputs:
-      dry-run:
+      dry_run:
         description: Only log what would be deleted
         type: boolean
         default: true
@@ -52,7 +52,7 @@ jobs:
         package: ${{ env.IMAGE_NAME }}
         delete-untagged: true
         older-than: 7 days
-        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
     - name: Delete branch tags older than 30 days
       uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
       with:
@@ -60,4 +60,4 @@ jobs:
         delete-tags: x64-*,arm-*
         exclude-tags: x64,arm
         older-than: 30 days
-        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

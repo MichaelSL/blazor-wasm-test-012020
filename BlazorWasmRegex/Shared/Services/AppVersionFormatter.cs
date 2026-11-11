@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace BlazorWasmRegex.Shared.Services
 {
     /// <summary>
@@ -7,7 +9,7 @@ namespace BlazorWasmRegex.Shared.Services
     {
         public const int ShortHashLength = 7;
 
-        public static string Format(string informationalVersion)
+        public static string Format(string? informationalVersion)
         {
             if (string.IsNullOrWhiteSpace(informationalVersion))
             {
