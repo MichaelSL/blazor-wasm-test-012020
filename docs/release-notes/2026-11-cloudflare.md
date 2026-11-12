@@ -40,6 +40,6 @@ The self-hosted Orange Pi went down during a system update and couldn't be recov
 
 ## Known issues / follow-ups
 
-- The **HW Monitor** link points at `monitor.dotnet-regex.com`, which is on the home network and is down while the Pi is.
+- The **HW Monitor** link (to `monitor.dotnet-regex.com` on the home network) was removed afterwards: the Pi is no longer used.
 - Cache headers are Cloudflare's defaults: `max-age=0, must-revalidate` with ETags. Fingerprinted files could be marked immutable, but `_headers` patterns can't tell fingerprinted from plain names, and its rule limit is 100.
 - The Docker image workflow still runs on every push. It could be dropped if self-hosting is abandoned.
