@@ -6,7 +6,7 @@ A Blazor Web App for testing .NET (C#) regular expressions in your browser. The 
 
 Now hosted: [dotnet-regex](https://dotnet-regex.com/)
 
-As all work is done in the browser the app is self-hosted on opi zero device with extremely low resources as an experiment. To keep the server's work minimal, the pages are rendered to static HTML when the Docker image is built, and the server only serves files. Only the regex tester itself is an interactive WebAssembly component.
+As all work is done in the browser, the site is just static files: the pages are rendered to static HTML at build time and deployed to Cloudflare (Workers static assets) from GitHub Actions. Only the regex tester itself is an interactive WebAssembly component. The Docker images (x64/ARM) are still built for self-hosting.
 
 ## Application Usage
 
