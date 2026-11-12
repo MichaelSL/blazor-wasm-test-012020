@@ -1,18 +1,18 @@
 name: BuildAndUploadImages
 
-# Push to master or feature/** builds, tests and pushes images.
-# Pull requests to master build and test, but don't push: the PR's feature/** branch push already publishes its images.
+# Push to main or feature/** builds, tests and pushes images.
+# Pull requests to main build and test, but don't push: the PR's feature/** branch push already publishes its images.
 on:
   push:
     branches:
-      - master
+      - main
       - feature/**
     paths-ignore:
       - '**/*.md'
       - '**/*.gitignore'
       - '**/*.gitattributes'
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 env:
   DOTNET_NOLOGO: true
@@ -54,7 +54,7 @@ jobs:
         base="${REGISTRY}/${owner}/${IMAGE_NAME}"
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           suffix="-pr"
-        elif [ "${GITHUB_REF_NAME}" = "master" ]; then
+        elif [ "${GITHUB_REF_NAME}" = "main" ]; then
           suffix=""
         else
           suffix="-${GITHUB_REF_NAME//\//-}"
