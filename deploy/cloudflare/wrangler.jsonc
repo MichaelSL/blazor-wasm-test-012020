@@ -1,0 +1,18 @@
+{
+  // Static-only Worker (no script) serving the exported site. See docs/release-notes/2026-11-cloudflare.md.
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "dotnet-regex",
+  "compatibility_date": "2026-11-11",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+  // dotnet-regex.com's DNS is hosted by Cloudflare; custom domains create the DNS records and certificates.
+  "routes": [
+    { "pattern": "dotnet-regex.com", "custom_domain": true },
+    { "pattern": "www.dotnet-regex.com", "custom_domain": true }
+  ],
+  "workers_dev": true,
+  "preview_urls": false
+}

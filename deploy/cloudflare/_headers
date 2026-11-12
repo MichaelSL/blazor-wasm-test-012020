@@ -1,0 +1,8 @@
+# Cloudflare static asset headers (copied into the exported site by export_static.py).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Listed in the import map as a ".gz" URL; the exported file is the plain script.
+/_framework/*.js.gz
+  Content-Type: text/javascript; charset=utf-8

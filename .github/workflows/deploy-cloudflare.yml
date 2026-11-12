@@ -1,0 +1,70 @@
+name: DeployCloudflare
+
+# Publishes the app, prerenders the pages, exports a static site (deploy/cloudflare/export_static.py)
+# and deploys it to Cloudflare Workers static assets (dotnet-regex.com).
+# Pushes to main deploy; pull requests into main build and export only.
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Setup .NET 11
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 11.0.x
+
+    - name: Test
+      run: dotnet test tests/RegexService.Tests --configuration Release
+
+    - name: Publish
+      run: |
+        version="$(date -u +%Y.%-m.%-d).${GITHUB_RUN_NUMBER}"
+        dotnet publish BlazorWasmRegex/Server -c Release -o publish \
+          -p:Version="${version}" -p:SourceRevisionId="${GITHUB_SHA::7}"
+
+    - name: Prerender pages
+      working-directory: publish
+      run: dotnet BlazorWasmRegex.Server.dll --PrerenderTo prerendered
+
+    - name: Export static site
+      run: python3 deploy/cloudflare/export_static.py publish deploy/cloudflare/site
+
+    - name: Deploy to Cloudflare
+      if: github.event_name != 'pull_request'
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        workingDirectory: deploy/cloudflare
+        wranglerVersion: '4.160.1'
+        command: deploy
+
+    - name: Check the export (pull requests)
+      if: github.event_name == 'pull_request'
+      run: |
+        test -f deploy/cloudflare/site/index.html
+        test -f deploy/cloudflare/site/about.html
+        test -f deploy/cloudflare/site/404.html
+        ls deploy/cloudflare/site/_framework/*.wasm > /dev/null
