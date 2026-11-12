@@ -39,7 +39,7 @@ dotnet publish BlazorWasmRegex/Server -c Release -o out
 docker build -f BlazorWasmRegex/Server/Dockerfile --build-arg VERSION=1.2.3.4 --build-arg SOURCE_REV=abc1234 -t regex-tester .
 ```
 
-CI (`.github/workflows/create-images.yml`) pushes `ghcr.io/<owner>/regex-tester:x64` / `:arm`, with a `-<branch>` suffix off master, on pushes to `master` and `feature/**`. Pull requests build without pushing. Only the latest image per tag is kept; `cleanup-images.yml` removes old versions.
+CI (`.github/workflows/create-images.yml`) pushes `ghcr.io/<owner>/regex-tester:x64` / `:arm`, with a `-<branch>` suffix off main, on pushes to `main` and `feature/**`. Pull requests build without pushing. Only the latest image per tag is kept; `cleanup-images.yml` removes old versions.
 
 ## Conventions and gotchas
 

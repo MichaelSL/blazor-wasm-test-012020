@@ -3,7 +3,7 @@ name: CleanupImages
 # Keeps only the latest images in ghcr.io/<owner>/regex-tester:
 # - when a branch is deleted, its x64-<branch> / arm-<branch> tags are removed;
 # - weekly, untagged versions older than 7 days and branch tags older than 30 days are removed.
-# The master tags `x64` and `arm` are never deleted.
+# The main tags `x64` and `arm` are never deleted.
 on:
   delete:
   schedule:
